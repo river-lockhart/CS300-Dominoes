@@ -1,1 +1,1 @@
-package src.main.java.models;
+package models;

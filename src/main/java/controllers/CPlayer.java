@@ -1,1 +1,1 @@
-package src.main.java.controllers;
+package controllers;

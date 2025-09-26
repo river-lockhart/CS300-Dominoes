@@ -1,1 +1,1 @@
-package src.main.java.views;
+package views;
