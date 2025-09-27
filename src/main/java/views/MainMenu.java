@@ -3,10 +3,10 @@ package views;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.layout.VBox;
-import javafx.scene.text.Font;
+import javafx.scene.image.Image;
+import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.scene.text.Font;
 
 public class MainMenu {
     private final Stage stage;
@@ -16,23 +16,64 @@ public class MainMenu {
     }
 
     public Scene createScene() {
-        Label title = new Label("Dominoes");
-        title.setFont(Font.font(36));
-        title.setStyle("-fx-text-fill: white;");
+        // parent box
+        BorderPane root = new BorderPane();
 
-        Button playBtn = new Button("Play");
-        Button exitBtn = new Button("Exit");
-        playBtn.setMaxWidth(Double.MAX_VALUE);
-        exitBtn.setMaxWidth(Double.MAX_VALUE);
+        // create scene
+        Scene scene = new Scene(root);
 
-        playBtn.setOnAction(e -> {/*go to table view*/});
-        exitBtn.setOnAction(e -> stage.close());
+        // create buttons
+        Button playButton = new Button("Play");
+        Button exitButton = new Button("Exit");
 
-        VBox root = new VBox(14, title, playBtn, exitBtn);
-        root.setPadding(new Insets(24));
-        root.setPrefSize(480, 320);
-        root.setStyle("-fx-background-color: #1e1e1e; -fx-alignment: center;");
+        // button action
+        playButton.setOnAction(e -> {
+            stage.setScene(new CTable(stage).createScene());
+            stage.setMaximized(true);
+        });
+        exitButton.setOnAction(e -> stage.close());
 
-        return new Scene(root);
+        // use top-level parent to determine button size
+        playButton.setMinSize(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE);
+        playButton.setMaxSize(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE);
+
+        // transparent buttons 
+        playButton.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 5px; -fx-border-radius: 10px;");
+        exitButton.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 5px; -fx-border-radius: 10px;");
+
+        // box for play button (stick to bottom-right of the top box)
+        VBox buttonsOnRight = new VBox(60, playButton, exitButton);
+        buttonsOnRight.setPadding(new Insets(20));
+        buttonsOnRight.setStyle("-fx-alignment: center-right;");
+        root.setRight(buttonsOnRight);
+
+        // background image
+        var url = getClass().getResource("/assets/mainmenu.jpg");
+        if (url != null) {
+            var img = new Image(url.toExternalForm());
+            var background = new Background(new BackgroundImage(
+                    img,
+                    BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT,
+                    BackgroundPosition.CENTER,
+                    new BackgroundSize(BackgroundSize.AUTO, BackgroundSize.AUTO, false, false, true, true)
+            ));
+            root.setBackground(background);
+        }
+
+        playButton.prefWidthProperty().bind(scene.widthProperty().multiply(0.25));
+        playButton.prefHeightProperty().bind(scene.heightProperty().multiply(0.15));
+
+        exitButton.prefWidthProperty().bind(scene.widthProperty().multiply(0.15));
+        exitButton.prefHeightProperty().bind(scene.heightProperty().multiply(0.15));
+
+        // flex font size based on the height of the buttons
+        playButton.heightProperty().addListener((obs, oldVal, newVal) ->
+            playButton.setFont(Font.font(newVal.doubleValue() * 0.4))
+        );
+        exitButton.heightProperty().addListener((obs, oldVal, newVal) ->
+            exitButton.setFont(Font.font(newVal.doubleValue() * 0.4))
+        );
+
+        return scene;
     }
 }

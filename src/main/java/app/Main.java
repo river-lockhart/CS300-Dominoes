@@ -5,11 +5,11 @@ import javafx.stage.Stage;
 import views.MainMenu;
 
 public class Main extends Application {
-    @Override
     public void start(Stage stage) {
         stage.setTitle("Dominoes");
         var menu = new MainMenu(stage);
         stage.setScene(menu.createScene());
+        stage.setFullScreen(true);
         stage.show();
     }
 
