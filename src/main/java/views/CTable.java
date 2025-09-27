@@ -41,10 +41,7 @@ public class CTable {
         // button to quit game back to menu
         Button quitButton = new Button("Quit Game");
         quitButton.setStyle("-fx-background-color: #151515; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 1px; -fx-border-radius: 5px;"); 
-        quitButton.setOnAction(e -> {
-            stage.setScene(new MainMenu(stage).createScene());
-            stage.setFullScreen(true);
-        });
+        quitButton.setOnAction(e -> stage.close());
         
         // navbar
         HBox navbar = new HBox(remainingPieces, quitButton);
@@ -57,8 +54,6 @@ public class CTable {
 
         // section for ai current pieces
         ScrollPane aiHand = makeScrollArea(aiHandStrip, AI_MIN, AI_PREF);
-
-       
 
         // table where pieces will be played
         StackPane center = new StackPane(tableTop);

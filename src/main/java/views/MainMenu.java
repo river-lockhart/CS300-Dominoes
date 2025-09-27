@@ -7,6 +7,7 @@ import javafx.scene.image.Image;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.scene.text.Font;
+import javafx.util.Duration;
 
 public class MainMenu {
     private final Stage stage;
@@ -28,9 +29,11 @@ public class MainMenu {
 
         // button action
         playButton.setOnAction(e -> {
-            stage.setScene(new CTable(stage).createScene());
+            var nextRoot = new CTable(stage).createScene().getRoot();
+            SceneTransition.fadeIntoScene(stage, nextRoot, Duration.millis(1000));
             stage.setMaximized(true);
         });
+
         exitButton.setOnAction(e -> stage.close());
 
         // use top-level parent to determine button size
@@ -41,7 +44,7 @@ public class MainMenu {
         playButton.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 5px; -fx-border-radius: 10px;");
         exitButton.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 5px; -fx-border-radius: 10px;");
 
-        // box for play button (stick to bottom-right of the top box)
+        // create box for button alignment
         VBox buttonsOnRight = new VBox(60, playButton, exitButton);
         buttonsOnRight.setPadding(new Insets(20));
         buttonsOnRight.setStyle("-fx-alignment: center-right;");
@@ -60,6 +63,7 @@ public class MainMenu {
             root.setBackground(background);
         }
 
+        // set button dimension properties
         playButton.prefWidthProperty().bind(scene.widthProperty().multiply(0.25));
         playButton.prefHeightProperty().bind(scene.heightProperty().multiply(0.15));
 
