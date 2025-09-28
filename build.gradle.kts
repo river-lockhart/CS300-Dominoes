@@ -1,7 +1,10 @@
+import org.gradle.jvm.application.tasks.CreateStartScripts
+
 plugins {
     application
     id("org.openjfx.javafxplugin") version "0.1.0"
     id("org.beryx.jlink") version "3.0.1"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 group = "edu.cs300.dominos"
@@ -22,6 +25,31 @@ repositories {
 javafx {
     version = "21.0.4"
     modules = listOf("javafx.controls", "javafx.graphics")
+}
+
+tasks.shadowJar {
+    archiveBaseName.set("CS300-Dominos")
+    archiveClassifier.set("")
+    mergeServiceFiles()
+    manifest { attributes["Main-Class"] = application.mainClass.get() }
+}
+
+tasks.named<CreateStartScripts>("startShadowScripts") {
+    dependsOn(tasks.named("jar"))
+}
+
+tasks.build {
+    dependsOn(tasks.shadowJar)
+}
+
+tasks.named("distZip") {
+    dependsOn(tasks.shadowJar)
+}
+tasks.named("distTar") {
+    dependsOn(tasks.shadowJar)
+}
+tasks.named("startScripts") {
+    dependsOn(tasks.shadowJar)
 }
 
 jlink {
