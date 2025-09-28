@@ -17,9 +17,9 @@ Restart computer.
 # TO-DO
 
 # Section 1
-- Create Domino structure in src\main\java\models\CDominoes.java
+- Create Domino structure in src\main\java\models\CDominoes.java -- DONE
 
-- Create distribution of 10 random dominoes to each player hand (associate resource image with each domino) in src\main\java\models\CRandom.java
+- Create distribution of 10 random dominoes to each player hand (associate resource image with each domino) in src\main\java\models\CRandom.java -- DONE
 
 - src\main\java\models\Hand.java will contain currentHand information as an ArrayList(what dominoes and how many, as well as adding and removing from hand)
 
