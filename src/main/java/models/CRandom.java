@@ -30,7 +30,7 @@ public class CRandom {
     public ArrayList<CDominoes> getRemainingPieces(){
         ArrayList<CDominoes> remaining = new ArrayList<>(dominoes);
 
-        remaining.sort(Comparator.comparing(CDominoes::getLeftValue).thenComparing(CDominoes::getRightValue));
+        remaining.sort(Comparator.comparing(CDominoes::getTopValue).thenComparing(CDominoes::getBottomValue));
 
         return remaining;
     }

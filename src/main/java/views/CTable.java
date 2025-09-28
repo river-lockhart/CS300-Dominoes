@@ -8,9 +8,13 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import models.AvailablePieces;
+import models.Hand;
 
 public class CTable {
     private final Stage stage;
+    private final Hand hand;
+    private final AvailablePieces remainingPieces;
 
     // boxes for players hands and table
     public final HBox aiHandStrip = new HBox(8);
@@ -23,9 +27,13 @@ public class CTable {
     private static final double PLAYER_PREF = 180;
     private static final double PLAYER_MIN  = 110;
     private static final double NAVBAR_PREF = 40; 
-    private static final double CENTER_MIN  = 120; 
+    private static final double CENTER_MIN  = 140; 
 
-    public CTable(Stage stage) { this.stage = stage; }
+    public CTable(Stage stage, Hand hand, AvailablePieces remainingPieces) { 
+        this.stage = stage; 
+        this.hand = hand;
+        this.remainingPieces = remainingPieces;
+    }
 
     public Scene createScene() {
         // parent panel

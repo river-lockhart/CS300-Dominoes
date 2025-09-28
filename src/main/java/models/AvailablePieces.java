@@ -1,5 +1,20 @@
 package models;
 
-// needs to call from CRandom to retrieve remaining pieces
-// from the domino pool. will be used to display what is not in
-// players hands
+import java.util.ArrayList;
+
+public class AvailablePieces{
+    private final Hand deck;
+
+    // associate available piece object with the current game deck
+    public AvailablePieces(Hand deck){
+        this.deck = deck;
+    }
+
+    //retrieve the leftover domino pieces from game specific deck
+    public ArrayList<CDominoes> getLeftoverDominoes(){
+        return deck.leftoverDominoes();
+    }
+
+
+
+}

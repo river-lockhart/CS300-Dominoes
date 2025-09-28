@@ -8,12 +8,18 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.scene.text.Font;
 import javafx.util.Duration;
+import models.AvailablePieces;
+import models.Hand;
 
 public class MainMenu {
     private final Stage stage;
+    private final Hand hand;
+    private final AvailablePieces remainingPieces;
 
-    public MainMenu(Stage stage) {
+    public MainMenu(Stage stage, Hand hand, AvailablePieces remainingPieces) {
         this.stage = stage;
+        this.hand = hand;
+        this.remainingPieces = remainingPieces;
     }
 
     public Scene createScene() {
@@ -29,7 +35,7 @@ public class MainMenu {
 
         // button action
         playButton.setOnAction(e -> {
-            var nextRoot = new CTable(stage).createScene().getRoot();
+            var nextRoot = new CTable(stage, hand, remainingPieces).createScene().getRoot();
             SceneTransition.fadeIntoScene(stage, nextRoot, Duration.millis(1000));
             stage.setMaximized(true);
         });

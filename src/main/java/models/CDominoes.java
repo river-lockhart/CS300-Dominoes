@@ -1,9 +1,8 @@
 package models;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.net.URL;
-
+import java.util.ArrayList;
 
 public class CDominoes{
 
@@ -37,26 +36,26 @@ public class CDominoes{
             File folder = new File(dir.toURI());
             File[] files = folder.listFiles((d, name) -> name.toLowerCase().endsWith(".png"));
             if (files != null) {
-                //iterates through each domino image and splits to find domino values
+                // iterates through each domino image and splits to find domino values
                 for (File f : files) {
                     // retrieves image path
                     String imagePath = "/assets/dominoImages/" + f.getName();
                     // removes extraneous text
                     String name = f.getName().replace("Domino-", "").replace(".PNG","").replace(".png","");
-                    //splits at the "." between values
-                    String[] parts = name.split("-");
+                    // splits at the "." between values
+                    String[] parts = name.split("\\.");
                     // stores domino number values
-                    int left = Integer.parseInt(parts[0]);
-                    int right = Integer.parseInt(parts[1]);
+                    int top = Integer.parseInt(parts[0]);
+                    int bottom = Integer.parseInt(parts[1]);
 
-                    //creates domino object with info from image name and default Vertical orientation
+                    // creates domino object with info from image name and default Vertical orientation
                     dominoes.add(new CDominoes(
                         "Vertical", 
                         imagePath, 
-                        left, 
-                        right, 
                         null, 
-                        null));
+                        null, 
+                        top, 
+                        bottom));
                 }
             }
         } catch (Exception e) { e.printStackTrace(); }
@@ -74,14 +73,14 @@ public class CDominoes{
             domino.rightValue = domino.bottomValue;
             domino.bottomValue = null;
             // value to rotate image holder in ui
-            domino.rotationDegrees -= 90;
+            domino.rotationDegrees = -90;
         }else{
-            (domino.orientation).equals("Vertical");
+            domino.orientation = "Vertical";
             domino.topValue = domino.leftValue;
             domino.leftValue = null;
             domino.bottomValue = domino.rightValue;
-            domino.bottomValue = null;
-            domino.rotationDegrees += 90;
+            domino.rightValue = null;
+            domino.rotationDegrees = 0;
         }
     }
     
