@@ -1,20 +1,26 @@
 package views;
 
+import java.util.ArrayList;
+
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.Button;
-import javafx.scene.control.ScrollPane;
+import javafx.scene.image.ImageView;
+import javafx.scene.image.Image;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import models.AvailablePieces;
+import models.CDominoes;
 import models.Hand;
+import controllers.CPlayer;
 
 public class CTable {
     private final Stage stage;
     private final Hand hand;
     private final AvailablePieces remainingPieces;
+    private final CPlayer player;
 
     // boxes for players hands and table
     public final HBox aiHandStrip = new HBox(8);
@@ -29,10 +35,13 @@ public class CTable {
     private static final double NAVBAR_PREF = 40; 
     private static final double CENTER_MIN  = 140; 
 
-    public CTable(Stage stage, Hand hand, AvailablePieces remainingPieces) { 
+    private final Pane overlay = new Pane();
+
+    public CTable(Stage stage, Hand hand, AvailablePieces remainingPieces, CPlayer player) { 
         this.stage = stage; 
         this.hand = hand;
         this.remainingPieces = remainingPieces;
+        this.player = player;
     }
 
     public Scene createScene() {
@@ -44,7 +53,6 @@ public class CTable {
         // button to show remaining pieces
         Button remainingPieces = new Button("Remaining Pieces");
         remainingPieces.setStyle("-fx-background-color: #151515; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 1px; -fx-border-radius: 5px;"); 
-
 
         // button to quit game back to menu
         Button quitButton = new Button("Quit Game");
@@ -61,7 +69,7 @@ public class CTable {
         navbar.setMaxHeight(Region.USE_PREF_SIZE);
 
         // section for ai current pieces
-        ScrollPane aiHand = makeScrollArea(aiHandStrip, AI_MIN, AI_PREF);
+        HBox aiHand = makeStrip(aiHandStrip, AI_MIN, AI_PREF, hand, "AI");
 
         // table where pieces will be played
         StackPane center = new StackPane(tableTop);
@@ -73,7 +81,7 @@ public class CTable {
         center.setMinHeight(CENTER_MIN); 
 
         // human players hand
-        ScrollPane playerScroll = makeScrollArea(playerHandStrip, PLAYER_MIN, PLAYER_PREF);
+        HBox playerStrip = makeStrip(playerHandStrip, PLAYER_MIN, PLAYER_PREF, hand, "Player");
 
         // panel for the three sections to go inside
         BorderPane content = new BorderPane();
@@ -81,7 +89,7 @@ public class CTable {
         // place sections accordingly
         content.setTop(aiHand);
         content.setCenter(center);
-        content.setBottom(playerScroll);
+        content.setBottom(playerStrip);
 
         // add navbar and play area to the scene
         root.getChildren().addAll(navbar, content);
@@ -89,12 +97,18 @@ public class CTable {
         // flex around the play area (prevents losing player hand area)
         VBox.setVgrow(content, Priority.ALWAYS);
 
+        // overlay sits above everything
+        overlay.setPickOnBounds(false);
+
+        // wrap root and overlay together
+        StackPane layeredRoot = new StackPane(root, overlay);
+
         // create scene
-        Scene scene = new Scene(root);
+        Scene scene = new Scene(layeredRoot);
 
         // force window width
         aiHand.setMaxWidth(Double.MAX_VALUE);
-        playerScroll.setMaxWidth(Double.MAX_VALUE);
+        playerStrip.setMaxWidth(Double.MAX_VALUE);
         BorderPane.setAlignment(center, Pos.CENTER);
 
         // should additionally prevent player hand moving out of window
@@ -105,30 +119,53 @@ public class CTable {
         return scene;
     }
 
-    // turn each players hand area scrollable
-    private ScrollPane makeScrollArea(HBox playerHand, double minimumHeight, double preferredHeight) {
-        playerHand.setAlignment(Pos.CENTER);
-        playerHand.setPadding(new Insets(6));
+    // turn each players hand area into a fixed-height strip (no scrolling)
+    private HBox makeStrip(HBox playerHandStrip, double minimumHeight, double preferredHeight, Hand hand, String choosePlayer) {
+        playerHandStrip.setAlignment(Pos.CENTER);
+        playerHandStrip.setPadding(new Insets(6));
+        playerHandStrip.setFillHeight(true);
+        playerHandStrip.setMinHeight(minimumHeight);
+        playerHandStrip.setPrefHeight(preferredHeight);
+        playerHandStrip.setMaxHeight(Region.USE_PREF_SIZE);
+        playerHandStrip.setStyle("-fx-background-color: #222831;");
 
-        // creates a scroll area inside each players hand area
-        ScrollPane scrollArea = new ScrollPane(playerHand);
+        displayDominoes(hand, playerHandStrip, choosePlayer);
 
-        // only scroll horizontal, not vertical
-        scrollArea.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        scrollArea.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scrollArea.setFitToWidth(true);
-        scrollArea.setFitToHeight(true);
-
-        scrollArea.setMinHeight(minimumHeight);
-        scrollArea.setPrefHeight(preferredHeight);
-        scrollArea.setMaxHeight(Region.USE_PREF_SIZE);
-
-        scrollArea.setStyle("""
-            -fx-background-color: transparent;
-            -fx-background: transparent;
-        """);
-        playerHand.setStyle("-fx-background-color: #222831;");
-
-        return scrollArea;
+        return playerHandStrip;
     }
+
+    private void displayDominoes(Hand hand, HBox strip, String choosePlayer){
+        ArrayList<CDominoes> sideOfTable = "AI".equals(choosePlayer) ? hand.getAiHand() : hand.getPlayerHand();
+
+        strip.getChildren().clear();
+
+        for(CDominoes domino : sideOfTable){
+            var url = getClass().getResource(domino.getImage());
+            if(url == null){
+                continue;
+            }
+
+            Image image = new Image(url.toExternalForm(), true);
+            ImageView view = new ImageView(image);
+
+            view.setPreserveRatio(true);
+            view.setSmooth(true);
+            view.setCache(true);
+
+            view.fitHeightProperty().bind(strip.heightProperty());
+            view.setRotate(domino.getRotationDegrees());
+
+            StackPane hitbox = new StackPane(view);
+            hitbox.setPadding(new Insets(4));
+
+            
+            if ("Player".equals(choosePlayer)) {
+                player.definePlayerMovement(overlay, hitbox, strip);
+            }
+
+            strip.getChildren().add(hitbox);
+        }
+    }
+
+
 }

@@ -1,5 +1,6 @@
 package app;
 
+import controllers.CPlayer;
 import javafx.application.Application;
 import javafx.stage.Stage;
 import models.AvailablePieces;
@@ -10,6 +11,7 @@ public class Main extends Application {
 
     //create deck of dominoes per game
     Hand gameDeck = new Hand();
+    final private CPlayer player = new CPlayer();
 
     // retrieve the dominoes not added to player hands
     AvailablePieces leftoverDominoes = new AvailablePieces(gameDeck);
@@ -17,7 +19,7 @@ public class Main extends Application {
     public void start(Stage stage) {
         stage.setTitle("Dominoes");
         //pass domino hands and remaining pieces to the ui
-        var menu = new MainMenu(stage, gameDeck, leftoverDominoes);
+        var menu = new MainMenu(stage, gameDeck, leftoverDominoes, player);
         stage.setScene(menu.createScene());
         stage.setFullScreen(true);
         

@@ -30,10 +30,10 @@ public class CDominoes{
         ArrayList<CDominoes> dominoes = new ArrayList<>();
         try {
             // retrieve resource folder
-            URL dir = CDominoes.class.getResource("/assets/dominoImages/");
-            if (dir == null) return dominoes;
+            URL resourceFolder = CDominoes.class.getResource("/assets/dominoImages/");
+            if (resourceFolder == null) return dominoes;
             // gets each domino image from the resource folder
-            File folder = new File(dir.toURI());
+            File folder = new File(resourceFolder.toURI());
             File[] files = folder.listFiles((d, name) -> name.toLowerCase().endsWith(".png"));
             if (files != null) {
                 // iterates through each domino image and splits to find domino values

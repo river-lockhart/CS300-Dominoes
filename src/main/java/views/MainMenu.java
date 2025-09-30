@@ -1,5 +1,6 @@
 package views;
 
+import controllers.CPlayer;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -15,11 +16,13 @@ public class MainMenu {
     private final Stage stage;
     private final Hand hand;
     private final AvailablePieces remainingPieces;
+    private final CPlayer player;
 
-    public MainMenu(Stage stage, Hand hand, AvailablePieces remainingPieces) {
+    public MainMenu(Stage stage, Hand hand, AvailablePieces remainingPieces, CPlayer player) {
         this.stage = stage;
         this.hand = hand;
         this.remainingPieces = remainingPieces;
+        this.player = player;
     }
 
     public Scene createScene() {
@@ -35,7 +38,7 @@ public class MainMenu {
 
         // button action
         playButton.setOnAction(e -> {
-            var nextRoot = new CTable(stage, hand, remainingPieces).createScene().getRoot();
+            var nextRoot = new CTable(stage, hand, remainingPieces, player).createScene().getRoot();
             SceneTransition.fadeIntoScene(stage, nextRoot, Duration.millis(1000));
             stage.setMaximized(true);
         });
