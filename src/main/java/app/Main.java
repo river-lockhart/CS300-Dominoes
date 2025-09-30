@@ -19,7 +19,7 @@ public class Main extends Application {
 
     public void start(Stage stage) {
         stage.setTitle("Dominoes");
-        //pass domino hands and remaining pieces to the ui
+        // pass domino hands, remaining pieces, and the player to the ui
         var menu = new MainMenu(stage, gameDeck, leftoverDominoes, player);
         stage.setScene(menu.createScene());
         stage.setFullScreen(true);
@@ -27,13 +27,6 @@ public class Main extends Application {
         stage.show();
 
         Music.playSongOnLoop("/assets/music/Song1.mp3", 0.6);
-
-        System.out.println("Leftover dominoes:");
-        var leftovers = leftoverDominoes.getLeftoverDominoes();
-        System.out.println("count = " + leftovers.size());
-        for (var d : leftovers) {
-            System.out.println(d.getImage() + " [" + d.getLeftValue() + "|" + d.getRightValue() + "]");
-        }
     }
 
     public static void main(String[] args) {

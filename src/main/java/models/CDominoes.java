@@ -50,7 +50,7 @@ public class CDominoes{
 
                     // creates domino object with info from image name and default Vertical orientation
                     dominoes.add(new CDominoes(
-                        "Vertical", 
+                        "VerticalUp", 
                         imagePath, 
                         null, 
                         null, 
@@ -62,23 +62,37 @@ public class CDominoes{
         return dominoes;
     }
 
-    // function to rotate domino image and value between vertical/horizontal and vice versa
+    // function to rotate domino image and value between vertical/horizontal/upside down and vice versa
     public static void rotateDomino(CDominoes domino){
         // swaps orientation
-        if((domino.orientation).equals("Vertical")){
-            domino.orientation = "Horizontal";
+        if("VerticalUp".equals(domino.orientation)){
+            domino.orientation = "HorizontalLeft";
             // swaps value orientation
             domino.leftValue = domino.topValue;
-            domino.topValue = null;
             domino.rightValue = domino.bottomValue;
+            domino.topValue = null;
             domino.bottomValue = null;
             // value to rotate image holder in ui
             domino.rotationDegrees = -90;
-        }else{
-            domino.orientation = "Vertical";
-            domino.topValue = domino.leftValue;
+        }else if("HorizontalLeft".equals(domino.orientation)){
+            domino.orientation = "VerticalDown";
+            domino.topValue = domino.rightValue;
+            domino.bottomValue = domino.leftValue;  
             domino.leftValue = null;
-            domino.bottomValue = domino.rightValue;
+            domino.rightValue = null;
+            domino.rotationDegrees = -180;
+        }else if("VerticalDown".equals(domino.orientation)){
+            domino.orientation = "HorizontalRight";
+            domino.leftValue = domino.topValue;
+            domino.rightValue = domino.bottomValue;
+            domino.topValue = null;
+            domino.bottomValue = null;
+            domino.rotationDegrees = -270;
+        }else{
+            domino.orientation = "VerticalUp";
+            domino.topValue = domino.rightValue;
+            domino.bottomValue = domino.leftValue;
+            domino.leftValue = null;
             domino.rightValue = null;
             domino.rotationDegrees = 0;
         }

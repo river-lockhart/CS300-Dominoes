@@ -51,16 +51,19 @@ public class CTable {
         root.setStyle("-fx-background-color: #151515;");
 
         // button to show remaining pieces
-        Button remainingPieces = new Button("Remaining Pieces");
-        remainingPieces.setStyle("-fx-background-color: #151515; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 1px; -fx-border-radius: 5px;"); 
+        Button remainingPiecesBtn = new Button("Remaining Pieces");
+        remainingPiecesBtn.setStyle("-fx-background-color: #151515; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 1px; -fx-border-radius: 5px;"); 
 
         // button to quit game back to menu
         Button quitButton = new Button("Quit Game");
         quitButton.setStyle("-fx-background-color: #151515; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 1px; -fx-border-radius: 5px;"); 
         quitButton.setOnAction(e -> stage.close());
+
+        remainingPiecesBtn.setFocusTraversable(false);
+        quitButton.setFocusTraversable(false);
         
         // navbar
-        HBox navbar = new HBox(remainingPieces, quitButton);
+        HBox navbar = new HBox(remainingPiecesBtn, quitButton);
         navbar.setAlignment(Pos.CENTER_RIGHT);
         navbar.setSpacing(10);
         navbar.setPadding(new Insets(6, 6, 4, 6));
@@ -106,6 +109,12 @@ public class CTable {
         // create scene
         Scene scene = new Scene(layeredRoot);
 
+        // set focus to the whole screen
+        remainingPiecesBtn.setFocusTraversable(false);
+        quitButton.setFocusTraversable(false);
+
+        scene.getRoot().requestFocus();
+
         // force window width
         aiHand.setMaxWidth(Double.MAX_VALUE);
         playerStrip.setMaxWidth(Double.MAX_VALUE);
@@ -129,19 +138,20 @@ public class CTable {
         playerHandStrip.setMaxHeight(Region.USE_PREF_SIZE);
         playerHandStrip.setStyle("-fx-background-color: #222831;");
 
-        displayDominoes(hand, playerHandStrip, choosePlayer);
+        displayDominoes(playerHandStrip, choosePlayer);
 
         return playerHandStrip;
     }
 
-    private void displayDominoes(Hand hand, HBox strip, String choosePlayer){
-        ArrayList<CDominoes> sideOfTable = "AI".equals(choosePlayer) ? hand.getAiHand() : hand.getPlayerHand();
+    private void displayDominoes(HBox strip, String whichPlayer) {
+        ArrayList<CDominoes> sideOfTable = "AI".equals(whichPlayer) ? hand.getAiHand() : hand.getPlayerHand();
 
         strip.getChildren().clear();
 
-        for(CDominoes domino : sideOfTable){
+        for (CDominoes domino : sideOfTable) {
             var url = getClass().getResource(domino.getImage());
-            if(url == null){
+            if (url == null) {
+                // could log missing asset here for debugging
                 continue;
             }
 
@@ -158,9 +168,9 @@ public class CTable {
             StackPane hitbox = new StackPane(view);
             hitbox.setPadding(new Insets(4));
 
-            
-            if ("Player".equals(choosePlayer)) {
-                player.definePlayerMovement(overlay, hitbox, strip);
+            if ("Player".equals(whichPlayer)) {
+                // attaches drag/interaction; if you add key handlers, guard with a putIfAbsent flag
+                player.definePlayerMovement(domino, overlay, hitbox, strip);
             }
 
             strip.getChildren().add(hitbox);

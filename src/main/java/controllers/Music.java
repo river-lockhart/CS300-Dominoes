@@ -9,21 +9,27 @@ public class Music {
     private Music(){}
 
     public static void playSongOnLoop(String resourcePath, double volume){
+        // stops current song
         stop();
+        // retrieves song url
         var songURL = Music.class.getResource(resourcePath);
 
+        // stops media player if no song is found
         if(songURL == null){
             System.out.println("Can't find a song to play");
             return;
         }
 
+        // inserts song url into media players
         player = new MediaPlayer(new Media(songURL.toExternalForm()));
+        // loops the song
         player.setCycleCount(MediaPlayer.INDEFINITE);
         player.setVolume(volume);
         player.play();
     }
 
     public static void stop(){
+        // stops the song and removes from media player if there is a song playing
         if(player != null){
             try{
                 player.stop();

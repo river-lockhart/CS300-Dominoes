@@ -3,11 +3,13 @@ package models;
 import java.util.ArrayList;
 
 public class Hand{
+    // splits the game hand into three sections
     private ArrayList<CDominoes> playerHand;
     private ArrayList<CDominoes> aiHand;
     private ArrayList<CDominoes> remainingPieces;
 
     public Hand(){
+        // creates a pool for the current deck in the game
         CRandom pool = new CRandom();
         this.playerHand = pool.dealHand();
         this.aiHand = pool.dealHand();
@@ -33,6 +35,4 @@ public class Hand{
     public ArrayList<CDominoes> leftoverDominoes(){
         return this.remainingPieces;
     }
-
-
 }

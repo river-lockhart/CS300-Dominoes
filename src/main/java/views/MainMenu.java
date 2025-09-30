@@ -32,9 +32,16 @@ public class MainMenu {
         // create scene
         Scene scene = new Scene(root);
 
+
         // create buttons
         Button playButton = new Button("Play");
         Button exitButton = new Button("Exit");
+
+        // removes focus from buttons (prevent accidental close out...trial and error lol)
+        playButton.setFocusTraversable(false);
+        exitButton.setFocusTraversable(false);
+
+        scene.getRoot().requestFocus();
 
         // button action
         playButton.setOnAction(e -> {

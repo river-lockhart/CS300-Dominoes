@@ -10,7 +10,7 @@ public class AvailablePieces{
         this.deck = deck;
     }
 
-    //retrieve the leftover domino pieces from game specific deck
+    // retrieve the leftover domino pieces from game specific deck
     public ArrayList<CDominoes> getLeftoverDominoes(){
         return deck.leftoverDominoes();
     }
