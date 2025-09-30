@@ -1,6 +1,13 @@
 # CS300-Dominos
 
-Open folder CS300-Dominos in integrated terminal in VSCode.
+
+# In case of Java issues
+
+Download JDK 21. -> Add path to JAVA_HOME in System Variables (may need to create JAVA_HOME). -> Ensure selected IDE is using correct Java version. -> Restart computer.
+
+# Run program
+
+Open folder CS300-Dominos in terminal.
 
 In terminal, run command: 
 
@@ -10,9 +17,20 @@ In terminal, run command:
 
 This will run the game. 
 
-If this does not work, then install JDK 21 and set to PATH in environment variables.
+# In case of weird bugs. (Gradle is finnicky)
 
-Restart computer.
+Close IDE. -> Go to CS300-Dominoes directory. -> Delete .gradle folder. This will delete cache manually.
+
+Open folder CS300-Dominos in terminal.
+
+In terminal, run command: 
+
+    Windows: .\gradlew.bat clean build    
+
+    Mac: ./gradlew clean build      or      chmod +x gradlew
+                                            ./gradlew clean build
+
+
 
 # TO-DO
 
@@ -23,7 +41,7 @@ Restart computer.
 
 - src\main\java\models\Hand.java will contain currentHand information as an ArrayList(what dominoes and how many, as well as adding and removing from hand) -- Just need to include add/subtract from hand
 
-- Dominoes in each players hand, as defined in src\main\java\models\Hand.java will be displayed in players hand area in src\main\java\views\CTable.java -- Reference is passed, need to apply to ui
+- Dominoes in each players hand, as defined in src\main\java\models\Hand.java will be displayed in players hand area in src\main\java\views\CTable.java -- DONE
 
 - Pieces not distributed to player hands will be sent to src\main\java\models\AvailablePieces.java (these will be displayed in the popup panel when clicking Remaining Pieces on the table) Needs to allow player to select pieces from the menu when they don't have a piece that will work -- Reference passed, need to apply to ui
 
