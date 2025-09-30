@@ -31,13 +31,13 @@ Restart computer.
 
 # Section 2
 
-- Player structure needs to be defined (src\main\java\controllers\Player.java) AiPlayer will extend Player
+- Player structure needs to be defined (src\main\java\controllers\Player.java) - Movement is Defined
 
 - AIPlayer rules need to be defined (src\main\java\controllers\AIPlayer.java)
 
 - Need to create rules for how dominoes will be placed on the table (src\main\java\models\TableLayout.java)
 
-- Dominoes in player hand need to be able to be dragged and dropped onto table, as well as rotated with a key event (src\main\java\models\TableLayout.java)
+- Dominoes in player hand need to be able to be dragged and dropped onto table, as well as rotated with a key event (src\main\java\models\TableLayout.java) - Still need table, movement is defined
 
 - Win state needs to be defined
 

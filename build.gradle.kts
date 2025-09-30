@@ -24,7 +24,13 @@ repositories {
 
 javafx {
     version = "21.0.4"
-    modules = listOf("javafx.controls", "javafx.graphics")
+    modules = listOf("javafx.controls", "javafx.graphics", "javafx.media")
+}
+
+dependencies {
+    implementation("org.openjfx:javafx-controls:21.0.4")
+    implementation("org.openjfx:javafx-graphics:21.0.4")
+    implementation("org.openjfx:javafx-media:21.0.4")
 }
 
 tasks.shadowJar {

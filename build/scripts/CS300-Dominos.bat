@@ -68,7 +68,7 @@ goto fail
 :execute
 @rem Setup the command line
 
-set CLASSPATH=%APP_HOME%\lib\CS300-Dominos-1.0.0.jar;%APP_HOME%\lib\javafx-controls-21.0.4-win.jar;%APP_HOME%\lib\javafx-graphics-21.0.4-win.jar;%APP_HOME%\lib\javafx-base-21.0.4-win.jar
+set CLASSPATH=%APP_HOME%\lib\CS300-Dominos-1.0.0.jar;%APP_HOME%\lib\javafx-controls-21.0.4-win.jar;%APP_HOME%\lib\javafx-media-21.0.4-win.jar;%APP_HOME%\lib\javafx-graphics-21.0.4-win.jar;%APP_HOME%\lib\javafx-base-21.0.4-win.jar
 
 
 @rem Execute CS300-Dominos

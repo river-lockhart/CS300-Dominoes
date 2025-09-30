@@ -1,6 +1,7 @@
 package app;
 
 import controllers.CPlayer;
+import controllers.Music;
 import javafx.application.Application;
 import javafx.stage.Stage;
 import models.AvailablePieces;
@@ -24,6 +25,8 @@ public class Main extends Application {
         stage.setFullScreen(true);
         
         stage.show();
+
+        Music.playSongOnLoop("/assets/music/Song1.mp3", 0.6);
 
         System.out.println("Leftover dominoes:");
         var leftovers = leftoverDominoes.getLeftoverDominoes();

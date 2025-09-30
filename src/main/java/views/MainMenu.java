@@ -60,7 +60,7 @@ public class MainMenu {
         root.setRight(buttonsOnRight);
 
         // background image
-        var url = getClass().getResource("/assets/mainmenu.jpg");
+        var url = getClass().getResource("/assets/menu/mainmenu.jpg");
         if (url != null) {
             var img = new Image(url.toExternalForm());
             var background = new Background(new BackgroundImage(
