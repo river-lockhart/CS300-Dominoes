@@ -11,6 +11,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.control.Button;
 import javafx.stage.Stage;
 import javafx.scene.text.Font;
+import javafx.application.Platform;
 
 public class PauseMenu {
     private final StackPane pauseScreen;
@@ -85,6 +86,25 @@ public class PauseMenu {
 
         // button actions
         resumeButton.setOnAction(e -> hide());
+        resetButton.setOnAction(e -> {
+            hide();
+
+            // normalize window if you want before swapping scenes
+            stage.setFullScreen(false);
+            stage.setMaximized(false);
+            stage.setResizable(true);
+            stage.setMinWidth(900);
+            stage.setMinHeight(870);
+            stage.setWidth(1280);
+            stage.setHeight(800);
+            stage.centerOnScreen();
+
+            // swap to a fresh main menu (single-arg constructor)
+            stage.setScene(new MainMenu(stage).createScene());
+
+            // ✅ enter fullscreen AFTER the new scene is attached (next pulse)
+            Platform.runLater(() -> stage.setFullScreen(true));
+        });
         quitButton.setOnAction(e -> stage.close());
     }
 

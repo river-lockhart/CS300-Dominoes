@@ -14,15 +14,9 @@ import models.Hand;
 
 public class MainMenu {
     private final Stage stage;
-    private final Hand hand;
-    private final AvailablePieces remainingPieces;
-    private final CPlayer player;
 
-    public MainMenu(Stage stage, Hand hand, AvailablePieces remainingPieces, CPlayer player) {
+    public MainMenu(Stage stage) {
         this.stage = stage;
-        this.hand = hand;
-        this.remainingPieces = remainingPieces;
-        this.player = player;
     }
 
     public Scene createScene() {
@@ -31,7 +25,6 @@ public class MainMenu {
 
         // create scene
         Scene scene = new Scene(root);
-
 
         // create buttons
         Button playButton = new Button("Play");
@@ -45,6 +38,11 @@ public class MainMenu {
 
         // button action
         playButton.setOnAction(e -> {
+            // ❇️ reset game state here with fresh instances
+            Hand hand = new Hand();
+            CPlayer player = new CPlayer();
+            AvailablePieces remainingPieces = new AvailablePieces(hand);
+
             var nextRoot = new CTable(stage, hand, remainingPieces, player).createScene().getRoot();
             SceneTransition.fadeIntoScene(stage, nextRoot, Duration.millis(1000));
             stage.setMaximized(true);

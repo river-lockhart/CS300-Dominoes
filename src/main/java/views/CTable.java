@@ -19,6 +19,7 @@ import models.CDominoes;
 import models.Hand;
 import controllers.CPlayer;
 import views.PauseMenu;
+import views.MainMenu;
 
 public class CTable {
     // deps
@@ -99,10 +100,26 @@ public class CTable {
         root.getChildren().addAll(box, overlay, pauseMenu.getView());
         overlay.toFront();
 
+        // make pause overlay fill window
         AnchorPane.setTopAnchor(pauseMenu.getView(), 0.0);
         AnchorPane.setRightAnchor(pauseMenu.getView(), 0.0);
         AnchorPane.setBottomAnchor(pauseMenu.getView(), 0.0);
         AnchorPane.setLeftAnchor(pauseMenu.getView(), 0.0);
+
+        // ✅ wire Reset in the pause menu to return to a fresh MainMenu
+        pauseMenu.getResetButton().setOnAction(e -> {
+            pauseMenu.hide();
+            // normalize window, then swap to clean main menu
+            stage.setFullScreen(false);
+            stage.setMaximized(false);
+            stage.setResizable(true);
+            stage.setMinWidth(900);
+            stage.setMinHeight(870);
+            stage.setWidth(1280);
+            stage.setHeight(800);
+            stage.centerOnScreen();
+            stage.setScene(new MainMenu(stage).createScene());
+        });
 
         // populate tiles
         displayDominoes(hand, aiHandStrip, "AI", aiHandBar);
