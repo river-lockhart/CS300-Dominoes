@@ -20,7 +20,7 @@ public class Music {
             return;
         }
 
-        // inserts song url into media players
+        // inserts song url into media player
         player = new MediaPlayer(new Media(songURL.toExternalForm()));
         // loops the song
         player.setCycleCount(MediaPlayer.INDEFINITE);
@@ -33,12 +33,31 @@ public class Music {
         if(player != null){
             try{
                 player.stop();
-            }catch(Exception ignored){}
+            } catch(Exception ignored){}
             try{
                 player.dispose();
-            }catch(Exception ignored){}
+            } catch(Exception ignored){}
 
             player = null;
         }
+    }
+
+    // adjusts volume
+    public static void setVolume(int level){
+        if(player != null){
+            // volume goes 0-10
+            int volumeScale = Math.max(0, Math.min(10, level));
+            double scaledForMediaPlayer = volumeScale / 10.0;
+            player.setVolume(scaledForMediaPlayer);
+        }
+    }
+
+    // get current volume
+    public static int getVolume(){
+        if(player != null){
+            // retrieves on 0-10 scale for slider
+            return (int)Math.round(player.getVolume() * 10);
+        }
+        return 0;
     }
 }
