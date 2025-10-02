@@ -5,13 +5,14 @@ import javafx.geometry.Pos;
 import java.util.ArrayList;
 
 import javafx.geometry.Insets;
+import javafx.scene.Parent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.control.Button;
 import javafx.stage.Stage;
 import javafx.scene.text.Font;
-import javafx.application.Platform;
+import javafx.util.Duration;
 
 public class PauseMenu {
     private final StackPane pauseScreen;
@@ -20,7 +21,7 @@ public class PauseMenu {
     // buttons
     private final Button resumeButton = new Button("RESUME");
     private final Button settingsButton = new Button("SETTINGS");
-    private final Button resetButton = new Button("RESET");
+    private final Button resetButton = new Button("MENU");
     private final Button quitButton = new Button("QUIT");
     ArrayList<Button> buttons = new ArrayList<>();
 
@@ -46,7 +47,8 @@ public class PauseMenu {
         menuPanel.setBorder(new Border(new BorderStroke(
                 Color.WHITE, BorderStrokeStyle.SOLID,
                 new CornerRadii(10), new BorderWidths(2))));
-        menuPanel.setFillWidth(false); // let children keep their own pref widths
+        // prevents children from getting incorrect sizing
+        menuPanel.setFillWidth(false); 
 
         // set menu panel to percentage of screen
         menuPanel.prefWidthProperty().bind(pauseScreen.widthProperty().multiply(0.40));
@@ -63,23 +65,21 @@ public class PauseMenu {
         buttons.add(resetButton);
         buttons.add(quitButton);
 
-        // style and size all buttons at once (match MainMenu vibe)
+        // style and size all buttons at once
         for (Button button : buttons){
-            // transparent w/ white border like your MainMenu buttons
             button.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 5px; -fx-border-radius: 10px;");
             button.setFocusTraversable(false);
-
             
-            // keep max width at pref so VBox won't force-fill
-            button.setMaxWidth(Region.USE_PREF_SIZE);
-
-            // sizes relative to the panel
+            // sizes buttons relative to the panel
             button.prefWidthProperty().bind(menuPanel.widthProperty().multiply(0.50));  // ~40% of panel width
             button.prefHeightProperty().bind(menuPanel.heightProperty().multiply(0.20)); // ~20% of panel height
             button.setMinHeight(32);
+
+            // keeps VBox from autofilling buttons
+            button.setMaxWidth(Region.USE_PREF_SIZE);
             button.setMaxHeight(Region.USE_PREF_SIZE);
 
-            // font scales with button height (≈40% of height)
+            // font scales with button height
             button.heightProperty().addListener((obs, oh, nh) ->
                     button.setFont(Font.font(nh.doubleValue() * 0.25)));
         }
@@ -89,21 +89,9 @@ public class PauseMenu {
         resetButton.setOnAction(e -> {
             hide();
 
-            // normalize window if you want before swapping scenes
-            stage.setFullScreen(false);
-            stage.setMaximized(false);
-            stage.setResizable(true);
-            stage.setMinWidth(900);
-            stage.setMinHeight(870);
-            stage.setWidth(1280);
-            stage.setHeight(800);
-            stage.centerOnScreen();
-
-            // swap to a fresh main menu (single-arg constructor)
-            stage.setScene(new MainMenu(stage).createScene());
-
-            // ✅ enter fullscreen AFTER the new scene is attached (next pulse)
-            Platform.runLater(() -> stage.setFullScreen(true));
+            // swap to a fresh main menu with a frozen crossfade (prevents window from resizing weird when crossfading)
+            Parent menuRoot = new MainMenu(stage).createRoot();
+            SceneTransition.fadeIntoScene(stage, menuRoot, Duration.millis(600));
         });
         quitButton.setOnAction(e -> stage.close());
     }

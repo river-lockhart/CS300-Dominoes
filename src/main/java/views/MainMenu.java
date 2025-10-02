@@ -2,6 +2,7 @@ package views;
 
 import controllers.CPlayer;
 import javafx.geometry.Insets;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.image.Image;
@@ -19,12 +20,9 @@ public class MainMenu {
         this.stage = stage;
     }
 
-    public Scene createScene() {
-        // parent box
+    // root to allow crossfade between scenes
+    public Parent createRoot() {
         BorderPane root = new BorderPane();
-
-        // create scene
-        Scene scene = new Scene(root);
 
         // create buttons
         Button playButton = new Button("Play");
@@ -34,25 +32,18 @@ public class MainMenu {
         playButton.setFocusTraversable(false);
         exitButton.setFocusTraversable(false);
 
-        scene.getRoot().requestFocus();
-
         // button action
         playButton.setOnAction(e -> {
-            // ❇️ reset game state here with fresh instances
+            // reset game state here with fresh instances
             Hand hand = new Hand();
             CPlayer player = new CPlayer();
             AvailablePieces remainingPieces = new AvailablePieces(hand);
 
-            var nextRoot = new CTable(stage, hand, remainingPieces, player).createScene().getRoot();
-            SceneTransition.fadeIntoScene(stage, nextRoot, Duration.millis(1000));
-            stage.setMaximized(true);
+            var tableRoot = new CTable(stage, hand, remainingPieces, player).createRoot();
+            SceneTransition.fadeIntoScene(stage, tableRoot, Duration.millis(600));
         });
 
         exitButton.setOnAction(e -> stage.close());
-
-        // use top-level parent to determine button size
-        playButton.setMinSize(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE);
-        playButton.setMaxSize(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE);
 
         // transparent buttons 
         playButton.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 5px; -fx-border-radius: 10px;");
@@ -77,12 +68,29 @@ public class MainMenu {
             root.setBackground(background);
         }
 
-        // set button dimension properties
-        playButton.prefWidthProperty().bind(scene.widthProperty().multiply(0.25));
-        playButton.prefHeightProperty().bind(scene.heightProperty().multiply(0.15));
+        // ✅ size bindings that work both when inserted into the current Scene
+        //    (during cross-fade) and when used to create a fresh Scene.
+        // use the live stage scene if present; otherwise fall back to root size
+        var scene = stage.getScene();
 
-        exitButton.prefWidthProperty().bind(scene.widthProperty().multiply(0.15));
-        exitButton.prefHeightProperty().bind(scene.heightProperty().multiply(0.15));
+        // use computed sizing so our pref bindings take effect
+        playButton.setMinSize(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE);
+        playButton.setMaxSize(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE);
+        exitButton.setMinSize(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE);
+        exitButton.setMaxSize(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE);
+
+        if (scene != null) {
+            playButton.prefWidthProperty().bind(scene.widthProperty().multiply(0.25));
+            playButton.prefHeightProperty().bind(scene.heightProperty().multiply(0.15));
+            exitButton.prefWidthProperty().bind(scene.widthProperty().multiply(0.15));
+            exitButton.prefHeightProperty().bind(scene.heightProperty().multiply(0.15));
+        } else {
+            // fallback (e.g., if someone uses createRoot() before attaching a Scene)
+            playButton.prefWidthProperty().bind(root.widthProperty().multiply(0.25));
+            playButton.prefHeightProperty().bind(root.heightProperty().multiply(0.15));
+            exitButton.prefWidthProperty().bind(root.widthProperty().multiply(0.15));
+            exitButton.prefHeightProperty().bind(root.heightProperty().multiply(0.15));
+        }
 
         // flex font size based on the height of the buttons
         playButton.heightProperty().addListener((obs, oldVal, newVal) ->
@@ -91,6 +99,32 @@ public class MainMenu {
         exitButton.heightProperty().addListener((obs, oldVal, newVal) ->
             exitButton.setFont(Font.font(newVal.doubleValue() * 0.4))
         );
+
+        return root;
+    }
+
+    public Scene createScene() {
+        // parent box
+        BorderPane root = (BorderPane) createRoot();
+
+        // create scene
+        Scene scene = new Scene(root);
+
+        // create buttons
+        Button playButton = (Button) ((VBox) root.getRight()).getChildren().get(0);
+        Button exitButton = (Button) ((VBox) root.getRight()).getChildren().get(1);
+
+        // set button dimension properties (rebind to this fresh Scene)
+        playButton.prefWidthProperty().unbind();
+        playButton.prefHeightProperty().unbind();
+        exitButton.prefWidthProperty().unbind();
+        exitButton.prefHeightProperty().unbind();
+
+        playButton.prefWidthProperty().bind(scene.widthProperty().multiply(0.25));
+        playButton.prefHeightProperty().bind(scene.heightProperty().multiply(0.15));
+
+        exitButton.prefWidthProperty().bind(scene.widthProperty().multiply(0.15));
+        exitButton.prefHeightProperty().bind(scene.heightProperty().multiply(0.15));
 
         return scene;
     }

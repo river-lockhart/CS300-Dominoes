@@ -1,45 +1,41 @@
 package views;
 
-import javafx.animation.FadeTransition;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.SnapshotParameters;
+import javafx.scene.image.ImageView;
+import javafx.scene.image.WritableImage;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
-public class SceneTransition {
+public final class SceneTransition {
     private SceneTransition() {}
 
-    // fades between main menu and gameplay
-    public static void fadeIntoScene(Stage stage, Parent nextScene, Duration timeToFade){
+    public static void fadeIntoScene(Stage stage, Parent nextRoot, Duration duration) {
         Scene scene = stage.getScene();
-        if(scene == null){
-            stage.setScene(new Scene(nextScene));
-            return;
-        }
+        Parent currentRoot = scene.getRoot();
 
-        Parent currentScene = scene.getRoot();
+        // captures a frame of the gameplay so crossfade doesn't seem to jumpy 
+        WritableImage shot = currentRoot.snapshot(new SnapshotParameters(), null);
+        ImageView overlay = new ImageView(shot);
+        overlay.setPreserveRatio(false);
+        overlay.fitWidthProperty().bind(scene.widthProperty());
+        overlay.fitHeightProperty().bind(scene.heightProperty());
+        overlay.setOpacity(1.0);
 
-        // creates a stack for scenes to be loaded into
-        StackPane sceneStack = new StackPane(currentScene);
-        nextScene.setOpacity(0);
-        // adds scenes to stack
-        sceneStack.getChildren().add(nextScene);
-        // sets the stack as active
-        scene.setRoot(sceneStack);
+        // show nextRoot underneath the frozen overlay
+        StackPane container = new StackPane(nextRoot, overlay);
+        scene.setRoot(container);
 
-        FadeTransition fadeIn = new FadeTransition(timeToFade, nextScene);
-        fadeIn.setFromValue(0);
-        fadeIn.setToValue(1);
-
-        FadeTransition fadeOut = new FadeTransition(timeToFade, currentScene);
-        fadeOut.setFromValue(1);
-        fadeOut.setToValue(0);
-
-        //fades into the next scene
-        fadeIn.setOnFinished(e -> scene.setRoot(nextScene));
-        
-        fadeOut.play();
-        fadeIn.play();
+        Timeline tl = new Timeline(
+            new KeyFrame(Duration.ZERO, new KeyValue(overlay.opacityProperty(), 1.0)),
+            new KeyFrame(duration,       new KeyValue(overlay.opacityProperty(), 0.0))
+        );
+        tl.setOnFinished(e -> scene.setRoot(nextRoot));
+        tl.play();
     }
 }

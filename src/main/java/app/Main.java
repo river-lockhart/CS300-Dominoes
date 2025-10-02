@@ -2,32 +2,47 @@ package app;
 
 import controllers.Music;
 import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.scene.input.KeyCombination;
 import javafx.stage.Stage;
 import views.MainMenu;
 
 public class Main extends Application {
 
-    // remember the last normal (windowed) size so exiting fullscreen feels normal
+    // remember the last window size 
     private double lastWindowW = 1280;
     private double lastWindowH = 800;
 
     public void start(Stage stage) {
         stage.setTitle("Dominoes");
 
-        // main menu now only needs the stage
+        // create main menu
         var menu = new MainMenu(stage);
         stage.setScene(menu.createScene());
 
-        // resizable sane defaults
+        // stage sizing
         stage.setResizable(true);
         stage.setMinWidth(900);
         stage.setMinHeight(870);
         stage.setWidth(lastWindowW);
         stage.setHeight(lastWindowH);
 
+        // disable hint and using esc to exit fullscreen
+        stage.setFullScreenExitHint("");
+        stage.setFullScreenExitKeyCombination(KeyCombination.NO_MATCH);
+
+        // force fullscreen after scene changes
+        stage.sceneProperty().addListener((obs, oldScene, newScene) ->
+            Platform.runLater(() -> {
+                stage.toFront();
+                stage.requestFocus();
+                stage.setFullScreen(true);
+            })
+        );
+
         stage.show();
 
-        // start fullscreen if you want
+        // start fullscreen
         stage.setFullScreen(true);
 
         // restore window size when leaving fullscreen
@@ -44,7 +59,7 @@ public class Main extends Application {
             }
         });
 
-        // bgm (you can adjust later with Music.setVolume(0..10) if you added that helper)
+        // background music
         Music.playSongOnLoop("/assets/music/Song1.mp3", 0.6);
     }
 
