@@ -25,6 +25,9 @@ public class PauseMenu {
     private final Button quitButton = new Button("QUIT");
     ArrayList<Button> buttons = new ArrayList<>();
 
+    // lazily-created settings overlay
+    private SettingsMenu settings; 
+
     public PauseMenu(Stage stage) {
         
         // overlay over the game table
@@ -71,8 +74,8 @@ public class PauseMenu {
             button.setFocusTraversable(false);
             
             // sizes buttons relative to the panel
-            button.prefWidthProperty().bind(menuPanel.widthProperty().multiply(0.50));  // ~40% of panel width
-            button.prefHeightProperty().bind(menuPanel.heightProperty().multiply(0.20)); // ~20% of panel height
+            button.prefWidthProperty().bind(menuPanel.widthProperty().multiply(0.50));  
+            button.prefHeightProperty().bind(menuPanel.heightProperty().multiply(0.20));
             button.setMinHeight(32);
 
             // keeps VBox from autofilling buttons
@@ -86,6 +89,29 @@ public class PauseMenu {
 
         // button actions
         resumeButton.setOnAction(e -> hide());
+
+        // open settings overlay 
+        settingsButton.setOnAction(e -> {
+            if (settings == null) {
+                settings = new SettingsMenu(stage, this);
+            }
+            Parent parent = pauseScreen.getParent();
+            if (parent instanceof Pane host) {
+                if (!host.getChildren().contains(settings.getView())) {
+                    host.getChildren().add(settings.getView());
+                    if (host instanceof AnchorPane) {
+                        AnchorPane.setTopAnchor(settings.getView(), 0.0);
+                        AnchorPane.setRightAnchor(settings.getView(), 0.0);
+                        AnchorPane.setBottomAnchor(settings.getView(), 0.0);
+                        AnchorPane.setLeftAnchor(settings.getView(), 0.0);
+                    }
+                }
+                this.hide();
+                settings.show();
+                settings.getView().toFront();
+            }
+        });
+
         resetButton.setOnAction(e -> {
             hide();
 

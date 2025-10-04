@@ -7,8 +7,7 @@ import javafx.beans.binding.DoubleBinding;
 import javafx.beans.value.ObservableNumberValue;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.geometry.HPos;
-import javafx.geometry.VPos;
+import javafx.geometry.Side;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
@@ -16,41 +15,44 @@ import javafx.scene.control.Button;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import models.AvailablePieces;
 import models.CDominoes;
 import models.Hand;
 import controllers.CPlayer;
+import views.PauseMenu;
 
 public class CTable {
+    // deps
     private final Stage stage;
     private final Hand hand;
     private final AvailablePieces remainingPieces;
     private final CPlayer player;
 
-    // navbar height, make hand bars dynamic
+    // steady navbar height; hand bars are dynamic
     private static final double NAVBAR_H = 56;
     private static final double HANDBAR_MIN = 64;
     private static final double HANDBAR_MAX = 140;
     private static final double CENTER_MIN_H = 160;
 
-    // domino aspect ratio 
+    // domino aspect
     private static final double DOMINO_ASPECT_W_OVER_H = 0.5;
 
-    // hand strips
+    // image resources
+    private static final String HANDBAR_BG = "/assets/tabletop/playerhands.jpg";
+    private static final String TABLE_BG   = "/assets/tabletop/table.jpg";
+
+    // strips
     public final HBox aiHandStrip = new HBox(8);
     public final HBox playerHandStrip = new HBox(8);
 
     // play area
     public final Canvas tableTop = new Canvas(800, 600);
 
-    // global overlay so dragged tiles appear on top of everything
+    // full-window layer so dragged tiles appear on top of everything
     private final Pane overlay = new Pane();
-
-    // background image used by both hand bars
-    private static final String HANDBAR_BG = "/assets/tabletop/playerhands.jpg";
-    private static final String TABLE_BG   = "/assets/tabletop/table.jpg";
 
     public CTable(Stage stage, Hand hand, AvailablePieces remainingPieces, CPlayer player) {
         this.stage = stage;
@@ -59,7 +61,7 @@ public class CTable {
         this.player = player;
     }
 
-    // parent box
+    // build the full layout and return the root
     public Parent createRoot() {
         AnchorPane root = new AnchorPane();
         PauseMenu pauseMenu = new PauseMenu(stage);
@@ -70,7 +72,6 @@ public class CTable {
         VBox box = new VBox();
         box.setFillWidth(true);
         box.setSpacing(0);
-        // attaches pane to the corners of the window
         AnchorPane.setTopAnchor(box, 0.0);
         AnchorPane.setRightAnchor(box, 0.0);
         AnchorPane.setBottomAnchor(box, 0.0);
@@ -84,7 +85,6 @@ public class CTable {
 
         // table
         StackPane tablePane = new StackPane();
-        // set table background image (cover the area; centered)
         var tableUrl = getClass().getResource(TABLE_BG);
         if (tableUrl != null) {
             Image tImg = new Image(tableUrl.toExternalForm(), true);
@@ -93,9 +93,12 @@ public class CTable {
                     BackgroundRepeat.NO_REPEAT,
                     BackgroundRepeat.NO_REPEAT,
                     BackgroundPosition.CENTER,
-                    new BackgroundSize(BackgroundSize.AUTO, BackgroundSize.AUTO, false, false, false, true) // cover
+                    new BackgroundSize(BackgroundSize.AUTO, BackgroundSize.AUTO,
+                            false, false, false, true) // cover
             );
             tablePane.setBackground(new Background(tBG));
+        } else {
+            tablePane.setStyle("-fx-background-color: #1c1f24;");
         }
         tablePane.setMinHeight(CENTER_MIN_H);
         tableTop.widthProperty().bind(tablePane.widthProperty());
@@ -106,11 +109,10 @@ public class CTable {
         // player hand bar
         StackPane playerHandBar = buildHandBar(playerHandStrip, true);
 
-        // adds above 4 sections to the main box
         box.getChildren().addAll(navbar, aiHandBar, tablePane, playerHandBar);
 
         // configure the overlay as a full-window top layer
-        overlay.setPickOnBounds(false); 
+        overlay.setPickOnBounds(false);
         AnchorPane.setTopAnchor(overlay, 0.0);
         AnchorPane.setRightAnchor(overlay, 0.0);
         AnchorPane.setBottomAnchor(overlay, 0.0);
@@ -120,13 +122,26 @@ public class CTable {
         root.getChildren().addAll(box, overlay, pauseMenu.getView());
         overlay.toFront();
 
-        // attache the pause menu to the corners of the windows
         AnchorPane.setTopAnchor(pauseMenu.getView(), 0.0);
         AnchorPane.setRightAnchor(pauseMenu.getView(), 0.0);
         AnchorPane.setBottomAnchor(pauseMenu.getView(), 0.0);
         AnchorPane.setLeftAnchor(pauseMenu.getView(), 0.0);
 
-        // populate dominoes in player hands
+        // settings overlay above pause
+        SettingsMenu settingsMenu = new SettingsMenu(stage, pauseMenu);
+        root.getChildren().add(settingsMenu.getView());
+        AnchorPane.setTopAnchor(settingsMenu.getView(), 0.0);
+        AnchorPane.setRightAnchor(settingsMenu.getView(), 0.0);
+        AnchorPane.setBottomAnchor(settingsMenu.getView(), 0.0);
+        AnchorPane.setLeftAnchor(settingsMenu.getView(), 0.0);
+
+        // swaps between pause menu and settings menu
+        pauseMenu.getSettingsButton().setOnAction(e -> {
+            pauseMenu.hide();
+            settingsMenu.show();
+        });
+
+        // populate tiles
         displayDominoes(hand, aiHandStrip, "AI", aiHandBar);
         displayDominoes(hand, playerHandStrip, "Player", playerHandBar);
 
@@ -136,10 +151,15 @@ public class CTable {
     public Scene createScene() {
         Parent root = createRoot();
 
-        // scene
         Scene scene = new Scene(root);
 
-        // min sizes for scene
+        stage.widthProperty().addListener((obs, oldW, newW) -> {
+            System.out.println("window width: " + newW.intValue());
+        });
+        stage.heightProperty().addListener((obs, oldH, newH) -> {
+            System.out.println("window height: " + newH.intValue());
+        });
+
         stage.setMinWidth(900);
         stage.setMinHeight(870);
 
@@ -147,7 +167,6 @@ public class CTable {
     }
 
     private HBox buildNavbar(Stage stage, PauseMenu pauseMenu) {
-        // create and style buttons on play table
         Button remainingPiecesBtn = new Button("Remaining Pieces");
         remainingPiecesBtn.setStyle("-fx-background-color: #151515; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 1px; -fx-border-radius: 6px;");
         remainingPiecesBtn.setFocusTraversable(false);
@@ -157,11 +176,9 @@ public class CTable {
         menuButton.setFocusTraversable(false);
         menuButton.setOnAction(e -> pauseMenu.show());
 
-        // flex navbar
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        // flex buttons in navbar
         HBox bar = new HBox(10, spacer, remainingPiecesBtn, menuButton);
         bar.setAlignment(Pos.CENTER_RIGHT);
         bar.setPadding(new Insets(8, 10, 8, 10));
@@ -169,6 +186,7 @@ public class CTable {
         bar.setMinHeight(NAVBAR_H);
         bar.setPrefHeight(NAVBAR_H);
         bar.setMaxHeight(NAVBAR_H);
+
         bar.setMinWidth(0);
         bar.setPrefWidth(Region.USE_COMPUTED_SIZE);
         bar.setMaxWidth(Double.MAX_VALUE);
@@ -176,64 +194,60 @@ public class CTable {
         return bar;
     }
 
-    // creates sections for ai player hand and player hand
     private StackPane buildHandBar(HBox strip, boolean alignBottom) {
-        // style both hands
         strip.setAlignment(Pos.CENTER);
         strip.setFillHeight(true);
         strip.setPadding(new Insets(6));
         strip.setSpacing(8);
+
         strip.setMinWidth(0);
         strip.setPrefWidth(Region.USE_COMPUTED_SIZE);
         strip.setMaxWidth(Double.MAX_VALUE);
-
-        // flex strips
         HBox.setHgrow(strip, Priority.ALWAYS);
 
-        // we need the image *behind* the tiles and clipped to the bar's size
-        StackPane bar = new StackPane();
+        StackPane bar = new StackPane(strip);
         bar.setPadding(Insets.EMPTY);
 
-        // background image view
-        ImageView bgView = null;
         var bgUrl = getClass().getResource(HANDBAR_BG);
         if (bgUrl != null) {
             Image bgImg = new Image(bgUrl.toExternalForm(), true);
-            bgView = new ImageView(bgImg);
-            bgView.setPreserveRatio(true);
-            bgView.setSmooth(true);
-            bgView.setCache(true);
-
-            // fill the width of the bar; height will be whatever keeps aspect
-            bgView.fitWidthProperty().bind(bar.widthProperty());
-
-            // anchor to TOP for AI, BOTTOM for Player
-            StackPane.setAlignment(bgView, alignBottom ? Pos.BOTTOM_CENTER : Pos.TOP_CENTER);
-
-            // clip the whole bar area so only the edge we want is visible
-            javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle();
-            clip.widthProperty().bind(bar.widthProperty());
-            clip.heightProperty().bind(bar.heightProperty());
-            bar.setClip(clip);
-
-            bar.getChildren().add(bgView);
+            BackgroundImage bgi = new BackgroundImage(
+                    bgImg,
+                    BackgroundRepeat.NO_REPEAT,
+                    BackgroundRepeat.NO_REPEAT,
+                    new BackgroundPosition(Side.LEFT, 0.5, true, alignBottom ? Side.BOTTOM : Side.TOP, 0, false),
+                    new BackgroundSize(BackgroundSize.AUTO, BackgroundSize.AUTO, false, false, false, true)
+            );
+            bar.setBackground(new Background(bgi));
         } else {
-            // fallback color if image missing
             bar.setStyle("-fx-background-color: #222831;");
         }
 
-        // tiles sit above the background
-        bar.getChildren().add(strip);
-        StackPane.setAlignment(strip, Pos.CENTER);
-
         bar.setMinHeight(HANDBAR_MIN);
         bar.setMaxHeight(HANDBAR_MAX);
+        StackPane.setAlignment(strip, Pos.CENTER);
+
+        // thin white edge line at top (player) or bottom (ai)
+        Rectangle edge = new Rectangle();
+        edge.setManaged(false);
+        edge.setMouseTransparent(true);
+        edge.setFill(Color.WHITE);
+        edge.setHeight(1);
+        edge.widthProperty().bind(bar.widthProperty());
+        if (alignBottom) {
+            // player hand: edge on top
+            edge.setLayoutY(0);
+        } else {
+            // ai hand: edge on bottom
+            edge.layoutYProperty().bind(bar.heightProperty().subtract(1));
+        }
+        bar.getChildren().add(edge);
+        edge.toFront();
 
         final double childHPad = 8;
         final double stripSidePad = 12;
         final double spacing = strip.getSpacing();
 
-        // flexes dominoes inside of the hand strips
         ObservableNumberValue tileCount = Bindings.size(strip.getChildren());
         DoubleBinding handBarPrefH = Bindings.createDoubleBinding(() -> {
             int n = Math.max(1, tileCount.intValue());
@@ -253,64 +267,32 @@ public class CTable {
         return bar;
     }
 
-    // shows dominos in the hand strips
     private void displayDominoes(Hand hand, HBox strip, String who, StackPane bar) {
         ArrayList<CDominoes> sideOfTable = "AI".equals(who) ? hand.getAiHand() : hand.getPlayerHand();
         strip.getChildren().clear();
 
-        // remove any previous edge line
-        bar.getChildren().removeIf(n -> "handEdge".equals(n.getId())); 
-
         for (CDominoes domino : sideOfTable) {
-            // gets image resource
             var url = getClass().getResource(domino.getImage());
             if (url == null) continue;
 
-            // sets images
             Image image = new Image(url.toExternalForm(), true);
             ImageView view = new ImageView(image);
             view.setPreserveRatio(true);
             view.setSmooth(true);
             view.setCache(true);
 
-            // domino height tracks bar height
+            // tile height tracks bar height
             view.fitHeightProperty().bind(bar.heightProperty().subtract(12));
-
-            // rotates domino image
             view.setRotate(domino.getRotationDegrees());
 
-            // set up pane to act as hitbox for grabbing dominoes
             StackPane hitbox = new StackPane(view);
             hitbox.setPadding(new Insets(4));
             HBox.setHgrow(hitbox, Priority.NEVER);
 
-            // defines player actions for each domino
             if ("Player".equals(who)) {
                 player.definePlayerMovement(domino, overlay, hitbox, strip);
             }
-
-            // adds each hitbox to the strip, over the dominoes
             strip.getChildren().add(hitbox);
         }
-
-        // creates a border
-        javafx.scene.shape.Rectangle edge = new javafx.scene.shape.Rectangle();
-        edge.setId("handEdge");
-        edge.setManaged(false);              
-        edge.setMouseTransparent(true);
-        edge.setFill(javafx.scene.paint.Color.WHITE);
-        edge.setHeight(1);
-        edge.widthProperty().bind(bar.widthProperty());
-
-        // player = top border, AI = bottom border
-        if ("Player".equals(who)) {
-            edge.setLayoutY(0);
-        } else {
-            edge.layoutYProperty().bind(bar.heightProperty().subtract(1));
-        }
-
-        // adds border to the bar
-        bar.getChildren().add(edge);
-        edge.toFront(); 
     }
 }
