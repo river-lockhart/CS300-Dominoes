@@ -39,7 +39,8 @@ public class MainMenu {
             CPlayer player = new CPlayer();
             AvailablePieces remainingPieces = new AvailablePieces(hand);
 
-            var tableRoot = new CTable(stage, hand, remainingPieces, player).createRoot();
+            var turnManager = new controllers.TurnManager();
+            var tableRoot = new CTable(stage, hand, remainingPieces, player, turnManager).createRoot();
             SceneTransition.fadeIntoScene(stage, tableRoot, Duration.millis(600));
         });
 

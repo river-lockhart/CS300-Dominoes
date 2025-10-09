@@ -22,6 +22,7 @@ import models.AvailablePieces;
 import models.CDominoes;
 import models.Hand;
 import controllers.CPlayer;
+import controllers.TurnManager;
 import views.PauseMenu;
 
 public class CTable {
@@ -30,6 +31,7 @@ public class CTable {
     private final Hand hand;
     private final AvailablePieces remainingPieces;
     private final CPlayer player;
+    private final TurnManager turnManager;
 
     // steady navbar height; hand bars are dynamic
     private static final double NAVBAR_H = 56;
@@ -54,11 +56,12 @@ public class CTable {
     // full-window layer so dragged tiles appear on top of everything
     private final Pane overlay = new Pane();
 
-    public CTable(Stage stage, Hand hand, AvailablePieces remainingPieces, CPlayer player) {
+    public CTable(Stage stage, Hand hand, AvailablePieces remainingPieces, CPlayer player, TurnManager turnManager) {
         this.stage = stage;
         this.hand = hand;
         this.remainingPieces = remainingPieces;
         this.player = player;
+        this.turnManager = turnManager;
     }
 
     // build the full layout and return the root
@@ -156,6 +159,13 @@ public class CTable {
         stage.widthProperty().addListener((obs, oldW, newW) -> {
             System.out.println("window width: " + newW.intValue());
         });
+
+        // ui update to indicate which player has current turn
+        turnManager.turnProperty().addListener((o, oldSide, newSide) -> {
+        playerHandStrip.setOpacity(newSide == TurnManager.Side.PLAYER ? 1.0 : 0.6);
+        aiHandStrip.setOpacity(newSide == TurnManager.Side.AI ? 1.0 : 0.6);
+        });
+
         stage.heightProperty().addListener((obs, oldH, newH) -> {
             System.out.println("window height: " + newH.intValue());
         });
@@ -289,7 +299,11 @@ public class CTable {
             hitbox.setPadding(new Insets(4));
             HBox.setHgrow(hitbox, Priority.NEVER);
 
+            System.out.println(turnManager.turnProperty());
             if ("Player".equals(who)) {
+                // disables hitbox when its not the players turn so they can't drag dominoes
+                hitbox.disableProperty().bind(turnManager.turnProperty()
+                    .isNotEqualTo(controllers.TurnManager.Side.PLAYER));
                 player.definePlayerMovement(domino, overlay, hitbox, strip);
             }
             strip.getChildren().add(hitbox);
