@@ -45,17 +45,17 @@ In terminal, run command:
 
 - Pieces not distributed to player hands will be sent to src\main\java\models\AvailablePieces.java (these will be displayed in the popup panel when clicking Remaining Pieces on the table) Needs to allow player to select pieces from the menu when they don't have a piece that will work -- Reference passed, need to apply to ui
 
-- First player to move will be determined 50-50 (src\main\java\models\CRandom.java)
+- First player to move will be determined 50-50 (src\main\java\models\CRandom.java) - DONE
 
 # Section 2
 
-- Player structure needs to be defined (src\main\java\controllers\Player.java) - Movement is Defined
+- Player structure needs to be defined (src\main\java\controllers\Player.java) - DONE
 
-- AIPlayer rules need to be defined (src\main\java\controllers\AIPlayer.java)
+- AIPlayer rules need to be defined (src\main\java\controllers\AIPlayer.java) - DONE
 
-- Need to create rules for how dominoes will be placed on the table (src\main\java\models\TableLayout.java)
+- Need to create rules for how dominoes will be placed on the table (src\main\java\models\TableLayout.java) - DONE
 
-- Dominoes in player hand need to be able to be dragged and dropped onto table, as well as rotated with a key event (src\main\java\models\TableLayout.java) - Still need table, movement is defined
+- Dominoes in player hand need to be able to be dragged and dropped onto table, as well as rotated with a key event (src\main\java\models\TableLayout.java) - DONE
 
 - Win state needs to be defined
 
