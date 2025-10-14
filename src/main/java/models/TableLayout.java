@@ -14,23 +14,24 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import controllers.TurnManager;
+import util.ConsoleLogger;
 
 import java.util.*;
 
 public class TableLayout {
 
     private final Pane overlay;
-    private final Canvas tableTop;           // used to locate its parent (true visual table)
+    private final Canvas tableTop;
     private final TurnManager turnManager;
     private final HBox playerStrip;
     private final HBox aiStrip;
 
     private final Canvas hintLayer = new Canvas();
 
-    private int rows = 0, cols = 0;
-    private double cell = 48;
-    private static final double MIN_CELL = 32;
-    private static final double MAX_CELL = 64;
+    private int rowCount = 0, colCount = 0;
+    private double cellSize = 48;
+    private static final double MIN_CELL_SIZE = 32;
+    private static final double MAX_CELL_SIZE = 64;
 
     private final Map<Cell, PlacedDomino> occupancy = new HashMap<>();
     private final List<PlacedDomino> tableDominoes = new ArrayList<>();
@@ -47,14 +48,11 @@ public class TableLayout {
     private static final Color HINT_FILL   = Color.color(1, 1, 1, 0.08);
     private static final double HINT_ARC   = 6.0;
 
-    // Slight shrink applied to candidate anchor rectangles during validation so
-    // “just touching” a domino/anchor doesn’t count as overlap and get culled.
     private static final double ANCHOR_INSET = 1.0;
 
-    // 👇 NEW: show outlines/hints only during the very first turn
-    // (true at game start; flipped to false immediately after the first placement)
     private boolean showFirstTurnHints = true;
 
+    // builds layout helpers and starts listeners
     public TableLayout(Pane overlay, Canvas tableTop, TurnManager turnManager,
                        HBox playerStrip, HBox aiStrip) {
         this.overlay = Objects.requireNonNull(overlay);
@@ -70,7 +68,7 @@ public class TableLayout {
         repaintAnchorHints();
     }
 
-    /* --- force reseed "+" after layout to guarantee true center --- */
+    // reseeds a fresh center if the table is empty
     public void forceReseedCenterIfEmpty() {
         ensureGridReady();
         if (tableDominoes.isEmpty()) {
@@ -83,26 +81,32 @@ public class TableLayout {
         public final int row, col;
         public final boolean vertical;
         public final double offsetX, offsetY;
-        public Placement(int row, int col, boolean vertical, double dx, double dy) {
-            this.row=row; this.col=col; this.vertical=vertical; this.offsetX=dx; this.offsetY=dy;
+        public Placement(int row, int col, boolean vertical, double offsetX, double offsetY) {
+            this.row = row; this.col = col; this.vertical = vertical; this.offsetX = offsetX; this.offsetY = offsetY;
         }
-        @Override public String toString(){ return "Placement{r="+row+", c="+col+", v="+vertical+", dx="+offsetX+", dy="+offsetY+"}"; }
-    }
-
-    private static boolean isVerticalOrientation(CDominoes d) {
-        return d.getOrientation() != null && d.getOrientation().startsWith("Vertical");
-    }
-    private static void rotateToOrientation(CDominoes d, boolean vertical) {
-        int guard = 0;
-        while (isVerticalOrientation(d) != vertical && guard++ < 4) {
-            CDominoes.rotateDomino(d);
+        @Override public String toString() {
+            return "Placement{r=" + row + ", c=" + col + ", v=" + vertical + ", dx=" + offsetX + ", dy=" + offsetY + "}";
         }
     }
 
+    // checks if the domino is currently vertical
+    private static boolean isVerticalOrientation(CDominoes domino) {
+        return domino.getOrientation() != null && domino.getOrientation().startsWith("Vertical");
+    }
+
+    // rotates a domino until it matches the needed facing
+    private static void rotateToOrientation(CDominoes domino, boolean wantVertical) {
+        int rotateGuard = 0;
+        while (isVerticalOrientation(domino) != wantVertical && rotateGuard++ < 4) {
+            CDominoes.rotateDomino(domino);
+        }
+    }
+
+    // tries to snap a dragged tile to a legal anchor
     public boolean tryPlaceOnGrid(CDominoes domino, StackPane hitbox, HBox sourceStrip, String who) {
         ensureGridReady();
         if (hitbox.getParent() != overlay) return false;
-        if (rows <= 0 || cols <= 0) return false;
+        if (rowCount <= 0 || colCount <= 0) return false;
 
         boolean wantVertical = isVerticalOrientation(domino);
         Point2D dropCenter = new Point2D(
@@ -110,59 +114,61 @@ public class TableLayout {
                 hitbox.getLayoutY() + hitbox.getHeight() / 2.0
         );
 
-        Anchor pick = nearestMatchingAnchor(dropCenter, domino, wantVertical, cell * 1.6);
+        Anchor pick = nearestMatchingAnchor(dropCenter, domino, wantVertical, cellSize * 1.6);
 
-        // allow 90° auto-rotate if a perpendicular anchor is closer
+        // allows auto-rotate if the other facing is closer
         if (pick == null) {
             boolean altVertical = !wantVertical;
-            Anchor alt = nearestMatchingAnchor(dropCenter, domino, altVertical, cell * 1.6);
-            if (alt != null) {
+            Anchor altPick = nearestMatchingAnchor(dropCenter, domino, altVertical, cellSize * 1.6);
+            if (altPick != null) {
                 rotateToOrientation(domino, altVertical);
-                pick = alt;
+                pick = altPick;
             }
         }
 
         if (pick == null) return false;
 
         commitPlacementAt(domino, hitbox, sourceStrip,
-                new Placement(pick.r, pick.c, pick.vertical, pick.offsetX, pick.offsetY));
+                new Placement(pick.row, pick.col, pick.vertical, pick.offsetX, pick.offsetY));
         return true;
     }
 
+    // finds any legal placement for this domino
     public Optional<Placement> findLegalPlacementAnywhere(CDominoes domino) {
         ensureGridReady();
-        if (rows <= 0 || cols <= 0) return Optional.empty();
+        if (rowCount <= 0 || colCount <= 0) return Optional.empty();
 
-        for (int rot = 0; rot < 4; rot++) {
+        for (int rotation = 0; rotation < 4; rotation++) {
             boolean wantVertical = domino.getOrientation().startsWith("Vertical");
-            for (Anchor a : anchors) {
-                if (a.vertical != wantVertical) continue;
-                if (!anchorFree(a)) continue;
-                if (!matchesAnchor(domino, a)) continue;
-                return Optional.of(new Placement(a.r, a.c, a.vertical, a.offsetX, a.offsetY));
+            for (Anchor anchorItem : anchors) {
+                if (anchorItem.vertical != wantVertical) continue;
+                if (!anchorFree(anchorItem)) continue;
+                if (!matchesAnchor(domino, anchorItem)) continue;
+                return Optional.of(new Placement(anchorItem.row, anchorItem.col, anchorItem.vertical, anchorItem.offsetX, anchorItem.offsetY));
             }
             CDominoes.rotateDomino(domino);
         }
         return Optional.empty();
     }
 
+    // commits a placement onto the grid and advances turn
     public void commitPlacementAt(CDominoes domino, StackPane hitbox, HBox sourceStrip, Placement plan) {
         ensureGridReady();
 
-        Cell tl = new Cell(plan.row, plan.col);
-        Cell c2 = plan.vertical ? new Cell(plan.row+1, plan.col) : new Cell(plan.row, plan.col+1);
-        if (!inBounds(tl) || !inBounds(c2)) return;
-        if (occupancy.containsKey(tl) || occupancy.containsKey(c2)) return;
+        Cell topLeftCell = new Cell(plan.row, plan.col);
+        Cell secondCell = plan.vertical ? new Cell(plan.row + 1, plan.col) : new Cell(plan.row, plan.col + 1);
+        if (!inBounds(topLeftCell) || !inBounds(secondCell)) return;
+        if (occupancy.containsKey(topLeftCell) || occupancy.containsKey(secondCell)) return;
 
-        Anchor gate = null;
+        Anchor matchedAnchor = null;
         if (!tableDominoes.isEmpty()) {
-            for (Anchor a : anchors) {
-                if (a.r == plan.row && a.c == plan.col && a.vertical == plan.vertical
-                        && almost(a.offsetX, plan.offsetX) && almost(a.offsetY, plan.offsetY)) {
-                    gate = a; break;
+            for (Anchor anchorItem : anchors) {
+                if (anchorItem.row == plan.row && anchorItem.col == plan.col && anchorItem.vertical == plan.vertical
+                        && almost(anchorItem.offsetX, plan.offsetX) && almost(anchorItem.offsetY, plan.offsetY)) {
+                    matchedAnchor = anchorItem; break;
                 }
             }
-            if (gate == null || !matchesAnchor(domino, gate)) return;
+            if (matchedAnchor == null || !matchesAnchor(domino, matchedAnchor)) return;
         }
 
         if (hitbox.getParent() != overlay) {
@@ -170,22 +176,34 @@ public class TableLayout {
             overlay.getChildren().add(hitbox);
         }
 
-        // if we just placed a vertical DOUBLE into a single's perpendicular anchor,
-        // cap N/S expansion at that joint
+        boolean wasEmpty = tableDominoes.isEmpty();
+
+        // first placement: simple "placed [x]"
+        if (wasEmpty) {
+            ConsoleLogger.logFirstPlacement(turnManager.getTurn(), domino);
+        }
+
         boolean capNorthSouth = false;
-        if (gate != null && gate.vertical &&
-                (gate.touch == Touch.PERP_NORTH || gate.touch == Touch.PERP_SOUTH) &&
-                gate.incomingMustBeDouble) {
+        if (matchedAnchor != null && matchedAnchor.vertical &&
+                (matchedAnchor.touch == Touch.PERP_NORTH || matchedAnchor.touch == Touch.PERP_SOUTH) &&
+                matchedAnchor.incomingMustBeDouble) {
             capNorthSouth = true;
         }
 
-        // was the table empty before this placement?
-        boolean wasEmpty = tableDominoes.isEmpty();
-
-        place(domino, hitbox, tl, plan.vertical, plan.offsetX, plan.offsetY, capNorthSouth);
+        place(domino, hitbox, topLeftCell, plan.vertical, plan.offsetX, plan.offsetY, capNorthSouth);
         sourceStrip.getChildren().remove(hitbox);
 
-        // after first placement, hide all outlines + anchor hints
+        // non-first placements: "placed [x] against [y]"
+        if (!wasEmpty && matchedAnchor != null) {
+            PlacedDomino neighbor = findNeighborFor(plan, matchedAnchor);
+            if (neighbor != null) {
+                ConsoleLogger.logPlacedAgainst(turnManager.getTurn(), domino, neighbor.model);
+            } else {
+                // graceful fallback if no neighbor found
+                ConsoleLogger.logFirstPlacement(turnManager.getTurn(), domino);
+            }
+        }
+
         if (wasEmpty && showFirstTurnHints) {
             showFirstTurnHints = false;
             restyleAllPlacedDominoes();
@@ -195,7 +213,37 @@ public class TableLayout {
         nextTurn();
     }
 
-    /* ---------------- Anchors ---------------- */
+    // tries to resolve the existing neighbor you matched
+    private PlacedDomino findNeighborFor(Placement plan, Anchor gate) {
+        // candidate neighbor top-left cells to probe (broad net; first hit wins)
+        List<Cell> probes = new ArrayList<>();
+
+        if (plan.vertical) {
+            // straight attachments
+            probes.add(new Cell(plan.row - 2, plan.col)); // above
+            probes.add(new Cell(plan.row + 2, plan.col)); // below
+            // side-perpendicular possibilities
+            probes.add(new Cell(plan.row,     plan.col + 2));
+            probes.add(new Cell(plan.row,     plan.col - 1));
+            probes.add(new Cell(plan.row - 1, plan.col - 1));
+            probes.add(new Cell(plan.row + 2, plan.col - 1));
+        } else {
+            // straight attachments
+            probes.add(new Cell(plan.row, plan.col - 2)); // left
+            probes.add(new Cell(plan.row, plan.col + 2)); // right
+            // top/bottom perpendicular possibilities
+            probes.add(new Cell(plan.row - 2, plan.col));
+            probes.add(new Cell(plan.row + 1, plan.col));
+            probes.add(new Cell(plan.row - 1, plan.col));
+            probes.add(new Cell(plan.row + 2, plan.col));
+        }
+
+        for (Cell c : probes) {
+            PlacedDomino pd = occupancy.get(c);
+            if (pd != null) return pd;
+        }
+        return null;
+    }
 
     private enum Touch {
         NORTH, SOUTH, WEST, EAST,
@@ -203,164 +251,157 @@ public class TableLayout {
     }
 
     private static final class Anchor {
-        final int r, c;
+        final int row, col;
         final boolean vertical;
         final Integer required;
         final Touch touch;
         final boolean incomingMustBeDouble;
         final double offsetX, offsetY;
 
-        Anchor(int r, int c, boolean vertical, Integer required, Touch touch,
+        Anchor(int row, int col, boolean vertical, Integer required, Touch touch,
                boolean mustBeDouble, double offsetX, double offsetY) {
-            this.r=r; this.c=c; this.vertical=vertical; this.required=required;
-            this.touch=touch; this.incomingMustBeDouble=mustBeDouble;
+            this.row = row; this.col = col; this.vertical = vertical; this.required = required;
+            this.touch = touch; this.incomingMustBeDouble = mustBeDouble;
             this.offsetX = offsetX; this.offsetY = offsetY;
         }
-        @Override public boolean equals(Object o){
-            if(!(o instanceof Anchor)) return false;
-            Anchor a=(Anchor)o;
-            return r==a.r && c==a.c && vertical==a.vertical && touch==a.touch
+        @Override public boolean equals(Object o) {
+            if (!(o instanceof Anchor)) return false;
+            Anchor a = (Anchor) o;
+            return row == a.row && col == a.col && vertical == a.vertical && touch == a.touch
                     && almost(offsetX, a.offsetX) && almost(offsetY, a.offsetY);
         }
-        @Override public int hashCode(){ return Objects.hash(r,c,vertical,touch,Math.rint(offsetX*1000),Math.rint(offsetY*1000)); }
+        @Override public int hashCode() {
+            return Objects.hash(row, col, vertical, touch, Math.rint(offsetX * 1000), Math.rint(offsetY * 1000));
+        }
     }
 
+    // rebuilds all anchors from current board state
     private void rebuildAnchors() {
         anchors.clear();
 
         if (tableDominoes.isEmpty()) {
-            if (rows <= 0 || cols <= 0) return;
+            if (rowCount <= 0 || colCount <= 0) return;
 
             CenterSeed seed = computeCenterSeed();
-            if (anchorCellsFree(true, seed.vTL))
-                addAnchorIfValid(new Anchor(seed.vTL.r, seed.vTL.c, true, null, Touch.SOUTH, false, seed.vDX, seed.vDY));
-            if (anchorCellsFree(false, seed.hTL))
-                addAnchorIfValid(new Anchor(seed.hTL.r, seed.hTL.c, false, null, Touch.EAST, false, seed.hDX, seed.hDY));
+            if (anchorCellsFree(true, seed.verticalTopLeft))
+                addAnchorIfValid(new Anchor(seed.verticalTopLeft.row, seed.verticalTopLeft.col, true, null, Touch.SOUTH, false, seed.verticalOffsetX, seed.verticalOffsetY));
+            if (anchorCellsFree(false, seed.horizontalTopLeft))
+                addAnchorIfValid(new Anchor(seed.horizontalTopLeft.row, seed.horizontalTopLeft.col, false, null, Touch.EAST, false, seed.horizontalOffsetX, seed.horizontalOffsetY));
             repaintAnchorHints();
             return;
         }
 
-        for (PlacedDomino pd : tableDominoes) {
-            if (pd.vertical) {
-                // chain ends (unless capped by a perpendicular double)
-                if (!pd.capNorthSouth) {
-                    Integer topVal = pd.model.getTopValue();
-                    Cell above = new Cell(pd.topLeft.r - 2, pd.topLeft.c);
+        for (PlacedDomino placedDomino : tableDominoes) {
+            if (placedDomino.vertical) {
+                if (!placedDomino.capNorthSouth) {
+                    Integer topVal = placedDomino.model.getTopValue();
+                    Cell above = new Cell(placedDomino.topLeft.row - 2, placedDomino.topLeft.col);
                     if (topVal != null && inBoundsPair(true, above) && anchorCellsFree(true, above))
-                        addAnchorIfValid(new Anchor(above.r, above.c, true, topVal, Touch.SOUTH, false, pd.offsetX, pd.offsetY));
+                        addAnchorIfValid(new Anchor(above.row, above.col, true, topVal, Touch.SOUTH, false, placedDomino.offsetX, placedDomino.offsetY));
 
-                    Integer bottomVal = pd.model.getBottomValue();
-                    Cell below = new Cell(pd.topLeft.r + 2, pd.topLeft.c);
+                    Integer bottomVal = placedDomino.model.getBottomValue();
+                    Cell below = new Cell(placedDomino.topLeft.row + 2, placedDomino.topLeft.col);
                     if (bottomVal != null && inBoundsPair(true, below) && anchorCellsFree(true, below))
-                        addAnchorIfValid(new Anchor(below.r, below.c, true, bottomVal, Touch.NORTH, false, pd.offsetX, pd.offsetY));
+                        addAnchorIfValid(new Anchor(below.row, below.col, true, bottomVal, Touch.NORTH, false, placedDomino.offsetX, placedDomino.offsetY));
                 }
 
-                // perpendiculars
-                if (pd.isVerticalDouble()) {
-                    int rTop = pd.topLeft.r;
-                    int cCol = pd.topLeft.c;
+                if (placedDomino.isVerticalDouble()) {
+                    int startRow = placedDomino.topLeft.row;
+                    int startCol = placedDomino.topLeft.col;
 
-                    // left / right (horizontal singles attach here)
-                    Cell leftPerp = new Cell(rTop, cCol - 2);
+                    Cell leftPerp = new Cell(startRow, startCol - 2);
                     if (inBoundsPair(false, leftPerp) && anchorCellsFree(false, leftPerp)) {
-                        double dy = pd.offsetY + cell/2.0;
-                        Integer req = pd.model.getTopValue();
-                        addAnchorIfValid(new Anchor(leftPerp.r, leftPerp.c, false, req, Touch.PERP_EAST, false, pd.offsetX, dy));
+                        double dy = placedDomino.offsetY + cellSize / 2.0;
+                        Integer req = placedDomino.model.getTopValue();
+                        addAnchorIfValid(new Anchor(leftPerp.row, leftPerp.col, false, req, Touch.PERP_EAST, false, placedDomino.offsetX, dy));
                     }
-                    Cell rightPerp = new Cell(rTop, cCol + 1);
+                    Cell rightPerp = new Cell(startRow, startCol + 1);
                     if (inBoundsPair(false, rightPerp) && anchorCellsFree(false, rightPerp)) {
-                        double dy = pd.offsetY + cell/2.0;
-                        Integer req = pd.model.getTopValue();
-                        addAnchorIfValid(new Anchor(rightPerp.r, rightPerp.c, false, req, Touch.PERP_WEST, false, pd.offsetX, dy));
+                        double dy = placedDomino.offsetY + cellSize / 2.0;
+                        Integer req = placedDomino.model.getTopValue();
+                        addAnchorIfValid(new Anchor(rightPerp.row, rightPerp.col, false, req, Touch.PERP_WEST, false, placedDomino.offsetX, dy));
                     }
 
-                    // top/bottom allow horizontal singles to cross the center of the double
-                    if (!pd.capNorthSouth) {
-                        Cell abovePerpH = new Cell(pd.topLeft.r - 1, pd.topLeft.c - 1);
+                    if (!placedDomino.capNorthSouth) {
+                        Cell abovePerpH = new Cell(placedDomino.topLeft.row - 1, placedDomino.topLeft.col - 1);
                         if (inBoundsPair(false, abovePerpH) && anchorCellsFree(false, abovePerpH)) {
-                            double dx = pd.offsetX + cell/2.0;
-                            Integer req = pd.model.getTopValue();
-                            addAnchorIfValid(new Anchor(abovePerpH.r, abovePerpH.c, false, req, Touch.PERP_SOUTH, false, dx, pd.offsetY));
+                            double dx = placedDomino.offsetX + cellSize / 2.0;
+                            Integer req = placedDomino.model.getTopValue();
+                            addAnchorIfValid(new Anchor(abovePerpH.row, abovePerpH.col, false, req, Touch.PERP_SOUTH, false, dx, placedDomino.offsetY));
                         }
-                        Cell belowPerpH = new Cell(pd.topLeft.r + 2, pd.topLeft.c - 1);
+                        Cell belowPerpH = new Cell(placedDomino.topLeft.row + 2, placedDomino.topLeft.col - 1);
                         if (inBoundsPair(false, belowPerpH) && anchorCellsFree(false, belowPerpH)) {
-                            double dx = pd.offsetX + cell/2.0;
-                            Integer req = pd.model.getBottomValue();
-                            addAnchorIfValid(new Anchor(belowPerpH.r, belowPerpH.c, false, req, Touch.PERP_NORTH, false, dx, pd.offsetY));
+                            double dx = placedDomino.offsetX + cellSize / 2.0;
+                            Integer req = placedDomino.model.getBottomValue();
+                            addAnchorIfValid(new Anchor(belowPerpH.row, belowPerpH.col, false, req, Touch.PERP_NORTH, false, dx, placedDomino.offsetY));
                         }
                     }
                 } else {
-                    // vertical single: allow ONLY perpendicular **doubles** at its ends
-                    Cell abovePerp = new Cell(pd.topLeft.r - 1, pd.topLeft.c - 1);
-                    if (!pd.capNorthSouth && inBoundsPair(false, abovePerp) && anchorCellsFree(false, abovePerp)) {
-                        double dx = pd.offsetX + cell/2.0;
-                        Integer req = pd.model.getTopValue();
-                        addAnchorIfValid(new Anchor(abovePerp.r, abovePerp.c, false, req, Touch.PERP_SOUTH, true, dx, pd.offsetY));
+                    Cell abovePerp = new Cell(placedDomino.topLeft.row - 1, placedDomino.topLeft.col - 1);
+                    if (!placedDomino.capNorthSouth && inBoundsPair(false, abovePerp) && anchorCellsFree(false, abovePerp)) {
+                        double dx = placedDomino.offsetX + cellSize / 2.0;
+                        Integer req = placedDomino.model.getTopValue();
+                        addAnchorIfValid(new Anchor(abovePerp.row, abovePerp.col, false, req, Touch.PERP_SOUTH, true, dx, placedDomino.offsetY));
                     }
-                    Cell belowPerp = new Cell(pd.topLeft.r + 2, pd.topLeft.c - 1);
-                    if (!pd.capNorthSouth && inBoundsPair(false, belowPerp) && anchorCellsFree(false, belowPerp)) {
-                        double dx = pd.offsetX + cell/2.0;
-                        Integer req = pd.model.getBottomValue();
-                        addAnchorIfValid(new Anchor(belowPerp.r, belowPerp.c, false, req, Touch.PERP_NORTH, true, dx, pd.offsetY));
+                    Cell belowPerp = new Cell(placedDomino.topLeft.row + 2, placedDomino.topLeft.col - 1);
+                    if (!placedDomino.capNorthSouth && inBoundsPair(false, belowPerp) && anchorCellsFree(false, belowPerp)) {
+                        double dx = placedDomino.offsetX + cellSize / 2.0;
+                        Integer req = placedDomino.model.getBottomValue();
+                        addAnchorIfValid(new Anchor(belowPerp.row, belowPerp.col, false, req, Touch.PERP_NORTH, true, dx, placedDomino.offsetY));
                     }
                 }
 
             } else {
-                // horizontal domino
-                Integer leftVal = pd.model.getLeftValue();
-                Cell left = new Cell(pd.topLeft.r, pd.topLeft.c - 2);
-                if (leftVal != null && inBoundsPair(false,left) && anchorCellsFree(false,left))
-                    addAnchorIfValid(new Anchor(left.r, left.c, false, leftVal, Touch.EAST, false, pd.offsetX, pd.offsetY));
+                Integer leftVal = placedDomino.model.getLeftValue();
+                Cell left = new Cell(placedDomino.topLeft.row, placedDomino.topLeft.col - 2);
+                if (leftVal != null && inBoundsPair(false, left) && anchorCellsFree(false, left))
+                    addAnchorIfValid(new Anchor(left.row, left.col, false, leftVal, Touch.EAST, false, placedDomino.offsetX, placedDomino.offsetY));
 
-                Integer rightVal = pd.model.getRightValue();
-                Cell right = new Cell(pd.topLeft.r, pd.topLeft.c + 2);
-                if (rightVal != null && inBoundsPair(false,right) && anchorCellsFree(false,right))
-                    addAnchorIfValid(new Anchor(right.r, right.c, false, rightVal, Touch.WEST, false, pd.offsetX, pd.offsetY));
+                Integer rightVal = placedDomino.model.getRightValue();
+                Cell right = new Cell(placedDomino.topLeft.row, placedDomino.topLeft.col + 2);
+                if (rightVal != null && inBoundsPair(false, right) && anchorCellsFree(false, right))
+                    addAnchorIfValid(new Anchor(right.row, right.col, false, rightVal, Touch.WEST, false, placedDomino.offsetX, placedDomino.offsetY));
 
-                if (pd.isHorizontalDouble()) {
-                    // horizontal DOUBLE: one cell above, one below (centered)
-                    int rRow = pd.topLeft.r;
-                    int cLeft = pd.topLeft.c;
+                if (placedDomino.isHorizontalDouble()) {
+                    int startRow = placedDomino.topLeft.row;
+                    int leftCol = placedDomino.topLeft.col;
 
-                    Cell topPerp = new Cell(rRow - 2, cLeft);
+                    Cell topPerp = new Cell(startRow - 2, leftCol);
                     if (inBoundsPair(true, topPerp) && anchorCellsFree(true, topPerp)) {
-                        double dx = pd.offsetX + cell/2.0;
-                        Integer req = pd.model.getLeftValue();
-                        addAnchorIfValid(new Anchor(topPerp.r, topPerp.c, true, req, Touch.PERP_SOUTH, false, dx, pd.offsetY));
+                        double dx = placedDomino.offsetX + cellSize / 2.0;
+                        Integer req = placedDomino.model.getLeftValue();
+                        addAnchorIfValid(new Anchor(topPerp.row, topPerp.col, true, req, Touch.PERP_SOUTH, false, dx, placedDomino.offsetY));
                     }
-                    Cell bottomPerp = new Cell(rRow + 1, cLeft);
-                    if (inBoundsPair(true, bottomPerp) && anchorCellsFree(true, bottomPerp)) {
-                        double dx = pd.offsetX + cell/2.0;
-                        Integer req = pd.model.getLeftValue();
-                        addAnchorIfValid(new Anchor(bottomPerp.r, bottomPerp.c, true, req, Touch.PERP_NORTH, false, dx, pd.offsetY));
+                    Cell bottomPerp = new Cell(startRow + 1, leftCol);
+                    if (inboundsPairAndFreeTrue(bottomPerp))
+                    {
+                        double dx = placedDomino.offsetX + cellSize / 2.0;
+                        Integer req = placedDomino.model.getLeftValue();
+                        addAnchorIfValid(new Anchor(bottomPerp.row, bottomPerp.col, true, req, Touch.PERP_NORTH, false, dx, placedDomino.offsetY));
                     }
 
                 } else {
-                    // HORIZONTAL SINGLE:
-                    // allow vertical DOUBLES on LEFT and RIGHT sides ONLY (no top/bottom)
-                    int rRow  = pd.topLeft.r;
-                    int cLeft = pd.topLeft.c;
+                    int rRow = placedDomino.topLeft.row;
+                    int cLeft = placedDomino.topLeft.col;
                     int cRight = cLeft + 1;
 
-                    // LEFT side (centered beside the single)
-                    Cell leftSidePerp  = new Cell(rRow - 1, cLeft - 1);
+                    Cell leftSidePerp = new Cell(rRow - 1, cLeft - 1);
                     if (inBoundsPair(true, leftSidePerp) && anchorCellsFree(true, leftSidePerp)) {
-                        Integer req = pd.model.getLeftValue();
+                        Integer req = placedDomino.model.getLeftValue();
                         addAnchorIfValid(new Anchor(
-                                leftSidePerp.r, leftSidePerp.c,
+                                leftSidePerp.row, leftSidePerp.col,
                                 true, req, Touch.PERP_EAST, true,
-                                pd.offsetX, pd.offsetY + cell/2.0
+                                placedDomino.offsetX, placedDomino.offsetY + cellSize / 2.0
                         ));
                     }
 
-                    // RIGHT side (centered beside the single)
                     Cell rightSidePerp = new Cell(rRow - 1, cRight + 1);
                     if (inBoundsPair(true, rightSidePerp) && anchorCellsFree(true, rightSidePerp)) {
-                        Integer req = pd.model.getRightValue();
+                        Integer req = placedDomino.model.getRightValue();
                         addAnchorIfValid(new Anchor(
-                                rightSidePerp.r, rightSidePerp.c,
+                                rightSidePerp.row, rightSidePerp.col,
                                 true, req, Touch.PERP_WEST, true,
-                                pd.offsetX, pd.offsetY + cell/2.0
+                                placedDomino.offsetX, placedDomino.offsetY + cellSize / 2.0
                         ));
                     }
                 }
@@ -370,45 +411,49 @@ public class TableLayout {
         repaintAnchorHints();
     }
 
-    /* ---------------- Hint rendering + filters ---------------- */
+    // tiny helper for readability (horizontal double bottom anchor)
+    private boolean inboundsPairAndFreeTrue(Cell cell) {
+        return inBoundsPair(true, cell) && anchorCellsFree(true, cell);
+    }
 
-    private boolean addAnchorIfValid(Anchor cand) {
-        Point2D tl = cellTopLeftOnHint(new Cell(cand.r, cand.c));
-        double w = cand.vertical ? cell : cell * 2.0;
-        double h = cand.vertical ? cell * 2.0 : cell;
-        double x = tl.getX() + cand.offsetX;
-        double y = tl.getY() + cand.offsetY;
+    // adds an anchor if the slot is safe
+    private boolean addAnchorIfValid(Anchor candidate) {
+        Point2D topLeftHint = cellTopLeftOnHint(new Cell(candidate.row, candidate.col));
+        double w = candidate.vertical ? cellSize : cellSize * 2.0;
+        double h = candidate.vertical ? cellSize * 2.0 : cellSize;
+        double x = topLeftHint.getX() + candidate.offsetX;
+        double y = topLeftHint.getY() + candidate.offsetY;
 
-        // Inset candidate rect slightly for hit-tests to avoid “touching” being treated as overlap
         double ix = x + ANCHOR_INSET;
         double iy = y + ANCHOR_INSET;
         double iw = w - 2 * ANCHOR_INSET;
         double ih = h - 2 * ANCHOR_INSET;
 
         if (!rectFullyInsideHint(ix, iy, iw, ih)) return false;
-        if (rectOverlapsExistingAnchor(ix, iy, iw, ih, cand.vertical)) return false;
+        if (rectOverlapsExistingAnchor(ix, iy, iw, ih, candidate.vertical)) return false;
         if (rectOverlapsHandBars(ix, iy, iw, ih)) return false;
         if (rectOverlapsPlacedDominoes(ix, iy, iw, ih)) return false;
 
-        anchors.add(cand);
+        anchors.add(candidate);
         return true;
     }
 
+    // checks if a rectangle fits inside the hint layer
     private boolean rectFullyInsideHint(double x, double y, double w, double h) {
         double W = hintLayer.getWidth();
         double H = hintLayer.getHeight();
         return x >= 0.0 && y >= 0.0 && (x + w) <= W && (y + h) <= H;
     }
 
-    private boolean rectOverlapsExistingAnchor(double x, double y, double w, double h, boolean candVertical) {
+    // checks overlap with anchors of same facing
+    private boolean rectOverlapsExistingAnchor(double x, double y, double w, double h, boolean candidateVertical) {
         for (Anchor a : anchors) {
-            if (a.vertical != candVertical) continue;
-            Point2D tl = cellTopLeftOnHint(new Cell(a.r, a.c));
-            double aw = a.vertical ? cell : cell * 2.0;
-            double ah = a.vertical ? cell * 2.0 : cell;
-            // inset existing anchors too, consistently
-            double ax = tl.getX() + a.offsetX + ANCHOR_INSET;
-            double ay = tl.getY() + a.offsetY + ANCHOR_INSET;
+            if (a.vertical != candidateVertical) continue;
+            Point2D topLeft = cellTopLeftOnHint(new Cell(a.row, a.col));
+            double aw = a.vertical ? cellSize : cellSize * 2.0;
+            double ah = a.vertical ? cellSize * 2.0 : cellSize;
+            double ax = topLeft.getX() + a.offsetX + ANCHOR_INSET;
+            double ay = topLeft.getY() + a.offsetY + ANCHOR_INSET;
             double aiw = aw - 2 * ANCHOR_INSET;
             double aih = ah - 2 * ANCHOR_INSET;
 
@@ -417,44 +462,48 @@ public class TableLayout {
         return false;
     }
 
+    // checks overlap with the hand bars
     private boolean rectOverlapsHandBars(double xHint, double yHint, double w, double h) {
-        Bounds tb = tableAreaOnOverlay();
-        double ox = tb.getMinX() + xHint;
-        double oy = tb.getMinY() + yHint;
+        Bounds tableBounds = tableAreaOnOverlay();
+        double ox = tableBounds.getMinX() + xHint;
+        double oy = tableBounds.getMinY() + yHint;
 
-        Bounds playerB = nodeBoundsOnOverlay(playerStrip);
-        Bounds aiB     = nodeBoundsOnOverlay(aiStrip);
+        Bounds playerBounds = nodeBoundsOnOverlay(playerStrip);
+        Bounds aiBounds     = nodeBoundsOnOverlay(aiStrip);
 
-        return (playerB != null && rectsOverlap(ox, oy, w, h, playerB.getMinX(), playerB.getMinY(), playerB.getWidth(), playerB.getHeight()))
-            || (aiB     != null && rectsOverlap(ox, oy, w, h, aiB.getMinX(),     aiB.getMinY(),     aiB.getWidth(),     aiB.getHeight()));
+        return (playerBounds != null && rectsOverlap(ox, oy, w, h, playerBounds.getMinX(), playerBounds.getMinY(), playerBounds.getWidth(), playerBounds.getHeight()))
+            || (aiBounds     != null && rectsOverlap(ox, oy, w, h, aiBounds.getMinX(),     aiBounds.getMinY(),     aiBounds.getWidth(),     aiBounds.getHeight()));
     }
 
+    // checks overlap with already placed tiles
     private boolean rectOverlapsPlacedDominoes(double xHint, double yHint, double w, double h) {
         if (tableDominoes.isEmpty()) return false;
-        Bounds tb = tableAreaOnOverlay();
-        double ax = tb.getMinX() + xHint;
-        double ay = tb.getMinY() + yHint;
+        Bounds tableBounds = tableAreaOnOverlay();
+        double ax = tableBounds.getMinX() + xHint;
+        double ay = tableBounds.getMinY() + yHint;
 
-        for (PlacedDomino pd : tableDominoes) {
-            Node n = pd.node;
-            double bx = n.getLayoutX();
-            double by = n.getLayoutY();
-            double bw = n.getLayoutBounds().getWidth();
-            double bh = n.getLayoutBounds().getHeight();
+        for (PlacedDomino placedDomino : tableDominoes) {
+            Node node = placedDomino.node;
+            double bx = node.getLayoutX();
+            double by = node.getLayoutY();
+            double bw = node.getLayoutBounds().getWidth();
+            double bh = node.getLayoutBounds().getHeight();
             if (rectsOverlap(ax, ay, w, h, bx, by, bw, bh)) return true;
         }
         return false;
     }
 
-    private Bounds nodeBoundsOnOverlay(Node n) {
+    // gets node bounds in overlay space safely
+    private Bounds nodeBoundsOnOverlay(Node node) {
         try {
-            Bounds sceneB = n.localToScene(n.getBoundsInLocal());
-            return overlay.sceneToLocal(sceneB);
+            Bounds sceneBounds = node.localToScene(node.getBoundsInLocal());
+            return overlay.sceneToLocal(sceneBounds);
         } catch (Exception e) {
             return null;
         }
     }
 
+    // tests rectangle overlap with a small epsilon
     private boolean rectsOverlap(double ax, double ay, double aw, double ah,
                                  double bx, double by, double bw, double bh) {
         final double EPS = 0.5;
@@ -464,18 +513,18 @@ public class TableLayout {
                (ay + ah) > (by + EPS);
     }
 
+    // draws anchor hints during the first turn
     private void repaintAnchorHints() {
-        Bounds tb = tableAreaOnOverlay();
+        Bounds tableBounds = tableAreaOnOverlay();
         hintLayer.setManaged(false);
-        hintLayer.setLayoutX(tb.getMinX());
-        hintLayer.setLayoutY(tb.getMinY());
-        hintLayer.setWidth(tb.getWidth());
-        hintLayer.setHeight(tb.getHeight());
+        hintLayer.setLayoutX(tableBounds.getMinX());
+        hintLayer.setLayoutY(tableBounds.getMinY());
+        hintLayer.setWidth(tableBounds.getWidth());
+        hintLayer.setHeight(tableBounds.getHeight());
 
         GraphicsContext g = hintLayer.getGraphicsContext2D();
         g.clearRect(0, 0, hintLayer.getWidth(), hintLayer.getHeight());
 
-        // 👇 only draw during the first turn
         if (!showFirstTurnHints) return;
 
         g.setLineWidth(1.0);
@@ -483,9 +532,9 @@ public class TableLayout {
         g.setFill(HINT_FILL);
 
         for (Anchor a : anchors) {
-            Point2D px = cellTopLeftOnHint(new Cell(a.r, a.c));
-            double w = a.vertical ? cell : cell * 2.0;
-            double h = a.vertical ? cell * 2.0 : cell;
+            Point2D px = cellTopLeftOnHint(new Cell(a.row, a.col));
+            double w = a.vertical ? cellSize : cellSize * 2.0;
+            double h = a.vertical ? cellSize * 2.0 : cellSize;
 
             double x = px.getX() + a.offsetX;
             double y = px.getY() + a.offsetY;
@@ -495,74 +544,76 @@ public class TableLayout {
         }
     }
 
-    /* ---------------- Utility ---------------- */
-
-    private boolean inBoundsPair(boolean vertical, Cell tl) {
-        return inBounds(tl) && inBounds(vertical ? new Cell(tl.r+1, tl.c) : new Cell(tl.r, tl.c+1));
-    }
-    private boolean anchorCellsFree(boolean vertical, Cell tl) {
-        return !occupancy.containsKey(tl)
-                && !occupancy.containsKey(vertical ? new Cell(tl.r+1, tl.c) : new Cell(tl.r, tl.c+1));
+    // returns true if a two-cell slot is in bounds
+    private boolean inBoundsPair(boolean vertical, Cell topLeftCell) {
+        return inBounds(topLeftCell) && inBounds(vertical ? new Cell(topLeftCell.row + 1, topLeftCell.col) : new Cell(topLeftCell.row, topLeftCell.col + 1));
     }
 
-    private Anchor nearestMatchingAnchor(Point2D dropCenter, CDominoes d, boolean wantVertical, double radius) {
-        double bestD2 = radius * radius;
+    // returns true if both cells are free
+    private boolean anchorCellsFree(boolean vertical, Cell topLeftCell) {
+        return !occupancy.containsKey(topLeftCell)
+                && !occupancy.containsKey(vertical ? new Cell(topLeftCell.row + 1, topLeftCell.col) : new Cell(topLeftCell.row, topLeftCell.col + 1));
+    }
+
+    // finds the nearest matching anchor within a radius
+    private Anchor nearestMatchingAnchor(Point2D dropCenter, CDominoes domino, boolean wantVertical, double radius) {
+        double bestDist2 = radius * radius;
         Anchor best = null;
         for (Anchor a : anchors) {
             if (a.vertical != wantVertical) continue;
             if (!anchorFree(a)) continue;
-            if (!matchesAnchor(d, a)) continue;
+            if (!matchesAnchor(domino, a)) continue;
 
-            Point2D ac = anchorCenter(a);
-            double dx = ac.getX() - dropCenter.getX();
-            double dy = ac.getY() - dropCenter.getY();
-            double d2 = dx*dx + dy*dy;
-            if (d2 < bestD2) { bestD2 = d2; best = a; }
+            Point2D center = anchorCenter(a);
+            double dx = center.getX() - dropCenter.getX();
+            double dy = center.getY() - dropCenter.getY();
+            double dist2 = dx * dx + dy * dy;
+            if (dist2 < bestDist2) { bestDist2 = dist2; best = a; }
         }
         return best;
     }
 
+    // returns true if the anchor cells are free
     private boolean anchorFree(Anchor a) {
-        Cell tl = new Cell(a.r, a.c);
-        return anchorCellsFree(a.vertical, tl);
+        Cell topLeftCell = new Cell(a.row, a.col);
+        return anchorCellsFree(a.vertical, topLeftCell);
     }
 
+    // computes an anchor's center point on the overlay
     private Point2D anchorCenter(Anchor a) {
-        double w = a.vertical ? cell : cell*2;
-        double h = a.vertical ? cell*2 : cell;
-        Point2D px = cellTopLeftOnOverlay(new Cell(a.r, a.c));
-        return new Point2D(px.getX() + a.offsetX + w/2.0, px.getY() + a.offsetY + h/2.0);
+        double w = a.vertical ? cellSize : cellSize * 2;
+        double h = a.vertical ? cellSize * 2 : cellSize;
+        Point2D px = cellTopLeftOnOverlay(new Cell(a.row, a.col));
+        return new Point2D(px.getX() + a.offsetX + w / 2.0, px.getY() + a.offsetY + h / 2.0);
     }
 
-    private boolean matchesAnchor(CDominoes d, Anchor a) {
+    // checks if a domino's values match the anchor
+    private boolean matchesAnchor(CDominoes domino, Anchor a) {
         if (a.required == null) return true;
 
         if (a.vertical) {
-            Integer top = d.getTopValue();
-            Integer bot = d.getBottomValue();
-            boolean isDouble = (top != null && bot != null && top.equals(bot));
+            Integer top = domino.getTopValue();
+            Integer bottom = domino.getBottomValue();
+            boolean isDouble = (top != null && bottom != null && top.equals(bottom));
 
             switch (a.touch) {
                 case NORTH:      return top != null && top.equals(a.required);
-                case SOUTH:      return bot != null && bot.equals(a.required);
-
-                // side-perpendiculars for vertical piece meeting a horizontal single
+                case SOUTH:      return bottom != null && bottom.equals(a.required);
                 case PERP_EAST:
                 case PERP_WEST:
                     if (a.incomingMustBeDouble && !isDouble) return false;
-                    return (top != null && top.equals(a.required)) || (bot != null && bot.equals(a.required));
-
+                    return (top != null && top.equals(a.required)) || (bottom != null && bottom.equals(a.required));
                 case PERP_SOUTH:
                     if (a.incomingMustBeDouble && !isDouble) return false;
-                    return bot != null && bot.equals(a.required);
+                    return bottom != null && bottom.equals(a.required);
                 case PERP_NORTH:
                     if (a.incomingMustBeDouble && !isDouble) return false;
                     return top != null && top.equals(a.required);
                 default: return false;
             }
         } else {
-            Integer left = d.getLeftValue();
-            Integer right = d.getRightValue();
+            Integer left = domino.getLeftValue();
+            Integer right = domino.getRightValue();
             boolean isDouble = (left != null && right != null && left.equals(right));
 
             switch (a.touch) {
@@ -583,15 +634,16 @@ public class TableLayout {
         }
     }
 
+    // places a domino node and locks its events
     private void place(CDominoes domino, StackPane node, Cell topLeft, boolean vertical,
-                       double offsetX, double offsetY, boolean capNS) {
-        PlacedDomino pd = new PlacedDomino(domino, node, topLeft, vertical, offsetX, offsetY, capNS);
-        tableDominoes.add(pd);
+                       double offsetX, double offsetY, boolean capNorthSouthFlag) {
+        PlacedDomino placedDomino = new PlacedDomino(domino, node, topLeft, vertical, offsetX, offsetY, capNorthSouthFlag);
+        tableDominoes.add(placedDomino);
 
-        occupancy.put(topLeft, pd);
-        occupancy.put(vertical ? new Cell(topLeft.r+1, topLeft.c) : new Cell(topLeft.r, topLeft.c+1), pd);
+        occupancy.put(topLeft, placedDomino);
+        occupancy.put(vertical ? new Cell(topLeft.row + 1, topLeft.col) : new Cell(topLeft.row, topLeft.col + 1), placedDomino);
 
-        layoutOne(pd);
+        layoutOne(placedDomino);
 
         node.setOnMousePressed(null);
         node.setOnMouseDragged(null);
@@ -600,24 +652,24 @@ public class TableLayout {
         node.setMouseTransparent(true);
     }
 
-    private void layoutOne(PlacedDomino pd) {
-        Cell tl = pd.topLeft;
-        boolean vertical = pd.vertical;
-        StackPane node = pd.node;
-        CDominoes domino = pd.model;
+    // lays out one placed domino on the overlay
+    private void layoutOne(PlacedDomino placedDomino) {
+        Cell topLeft = placedDomino.topLeft;
+        boolean vertical = placedDomino.vertical;
+        StackPane node = placedDomino.node;
+        CDominoes domino = placedDomino.model;
 
-        Point2D px = cellTopLeftOnOverlay(tl);
-        double w = vertical ? cell : cell * 2;
-        double h = vertical ? cell * 2 : cell;
+        Point2D px = cellTopLeftOnOverlay(topLeft);
+        double w = vertical ? cellSize : cellSize * 2;
+        double h = vertical ? cellSize * 2 : cellSize;
 
-        double x = px.getX() + pd.offsetX;
-        double y = px.getY() + pd.offsetY;
+        double x = px.getX() + placedDomino.offsetX;
+        double y = px.getY() + placedDomino.offsetY;
 
         node.setPadding(Insets.EMPTY);
         node.setManaged(false);
         node.resizeRelocate(x, y, w, h);
 
-        // 👇 only show outlines on first turn
         node.setStyle(showFirstTurnHints ? OUTLINE_STYLE : null);
 
         if (!node.getChildren().isEmpty() && node.getChildren().get(0) instanceof ImageView) {
@@ -638,15 +690,16 @@ public class TableLayout {
         node.toFront();
     }
 
-    // 👇 restyle existing placed tiles when we turn hints off after first placement
+    // restyles all placed tiles when hints turn off
     private void restyleAllPlacedDominoes() {
         if (tableDominoes.isEmpty()) return;
-        for (PlacedDomino pd : tableDominoes) {
-            if (pd.node != null) pd.node.setStyle(showFirstTurnHints ? OUTLINE_STYLE : null);
+        for (PlacedDomino placedDomino : tableDominoes) {
+            if (placedDomino.node != null) placedDomino.node.setStyle(showFirstTurnHints ? OUTLINE_STYLE : null);
         }
         repaintAnchorHints();
     }
 
+    // binds grid math to table size changes
     private void bindGridToTable() {
         InvalidationListener relayout = obs -> {
             layoutHintCanvas();
@@ -673,112 +726,136 @@ public class TableLayout {
         Platform.runLater(this::forceReseedCenterIfEmpty);
     }
 
+    // re-lays out all placed tiles
     private void relayoutAllPlaced() {
         if (tableDominoes.isEmpty()) return;
-        for (PlacedDomino pd : tableDominoes) layoutOne(pd);
+        for (PlacedDomino placedDomino : tableDominoes) layoutOne(placedDomino);
     }
 
+    // sizes and positions the hint canvas to the table
     private void layoutHintCanvas() {
-        Bounds tb = tableAreaOnOverlay();
-        hintLayer.setLayoutX(tb.getMinX());
-        hintLayer.setLayoutY(tb.getMinY());
-        hintLayer.setWidth(tb.getWidth());
-        hintLayer.setHeight(tb.getHeight());
+        Bounds tableBounds = tableAreaOnOverlay();
+        hintLayer.setLayoutX(tableBounds.getMinX());
+        hintLayer.setLayoutY(tableBounds.getMinY());
+        hintLayer.setWidth(tableBounds.getWidth());
+        hintLayer.setHeight(tableBounds.getHeight());
     }
 
+    // computes grid cell size and counts
     private void computeGrid() {
         double w = hintLayer.getWidth();
         double h = hintLayer.getHeight();
-        if (w <= 0 || h <= 0) { rows = cols = 0; return; }
+        if (w <= 0 || h <= 0) { rowCount = colCount = 0; return; }
 
         double target = Math.min(w, h) / 18.0;
-        cell = clamp(target, MIN_CELL, MAX_CELL);
-        cols = Math.max(3, (int)Math.floor(w / cell));
-        rows = Math.max(3, (int)Math.floor(h / cell));
+        cellSize = clamp(target, MIN_CELL_SIZE, MAX_CELL_SIZE);
+        colCount = Math.max(3, (int) Math.floor(w / cellSize));
+        rowCount = Math.max(3, (int) Math.floor(h / cellSize));
     }
 
+    // ensures grid math and anchors exist
     private void ensureGridReady() {
-        if (rows <= 0 || cols <= 0) {
+        if (rowCount <= 0 || colCount <= 0) {
             layoutHintCanvas();
             computeGrid();
             relayoutAllPlaced();
             repaintAnchorHints();
         }
-        if (tableDominoes.isEmpty() && anchors.isEmpty() && rows > 0 && cols > 0) {
+        if (tableDominoes.isEmpty() && anchors.isEmpty() && rowCount > 0 && colCount > 0) {
             rebuildAnchors();
         }
     }
 
     private static final class CenterSeed {
-        final Cell vTL, hTL;
-        final double vDX, vDY, hDX, hDY;
-        CenterSeed(Cell vTL, Cell hTL, double vDX, double vDY, double hDX, double hDY){
-            this.vTL=vTL; this.hTL=hTL; this.vDX=vDX; this.vDY=vDY; this.hDX=hDX; this.hDY=hDY;
+        final Cell verticalTopLeft, horizontalTopLeft;
+        final double verticalOffsetX, verticalOffsetY, horizontalOffsetX, horizontalOffsetY;
+        CenterSeed(Cell vTopLeft, Cell hTopLeft, double vDX, double vDY, double hDX, double hDY) {
+            this.verticalTopLeft = vTopLeft; this.horizontalTopLeft = hTopLeft;
+            this.verticalOffsetX = vDX; this.verticalOffsetY = vDY;
+            this.horizontalOffsetX = hDX; this.horizontalOffsetY = hDY;
         }
     }
 
+    // computes center-aligned seeds for the very first move
     private CenterSeed computeCenterSeed() {
-        Bounds tb = tableAreaOnOverlay();
-        double ox = tb.getMinX();
-        double oy = tb.getMinY();
-        double cx = ox + tb.getWidth()  / 2.0;
-        double cy = oy + tb.getHeight() / 2.0;
+        Bounds tableBounds = tableAreaOnOverlay();
+        double ox = tableBounds.getMinX();
+        double oy = tableBounds.getMinY();
+        double centerX = ox + tableBounds.getWidth()  / 2.0;
+        double centerY = oy + tableBounds.getHeight() / 2.0;
 
-        double v_tlx = cx - cell/2.0;
-        double v_tly = cy - cell;
-        int vC = clampIndex((int)Math.floor((v_tlx - ox) / cell), 0, Math.max(0, cols - 1));
-        int vR = clampIndex((int)Math.floor((v_tly - oy) / cell), 0, Math.max(0, rows - 2));
-        Cell vTL = new Cell(vR, vC);
-        Point2D vTLpx = cellTopLeftOnOverlay(vTL);
-        double vCenterX = vTLpx.getX() + cell/2.0;
-        double vCenterY = vTLpx.getY() + cell;
-        double vDX = cx - vCenterX;
-        double vDY = cy - vCenterY;
+        double vTopLeftX = centerX - cellSize / 2.0;
+        double vTopLeftY = centerY - cellSize;
+        int vCol = clampIndex((int) Math.floor((vTopLeftX - ox) / cellSize), 0, Math.max(0, colCount - 1));
+        int vRow = clampIndex((int) Math.floor((vTopLeftY - oy) / cellSize), 0, Math.max(0, rowCount - 2));
+        Cell vTopLeft = new Cell(vRow, vCol);
+        Point2D vTopLeftPx = cellTopLeftOnOverlay(vTopLeft);
+        double vCenterX = vTopLeftPx.getX() + cellSize / 2.0;
+        double vCenterY = vTopLeftPx.getY() + cellSize;
+        double vDX = centerX - vCenterX;
+        double vDY = centerY - vCenterY;
 
-        double h_tlx = cx - cell;
-        double h_tly = cy - cell/2.0;
-        int hC = clampIndex((int)Math.floor((h_tlx - ox) / cell), 0, Math.max(0, cols - 2));
-        int hR = clampIndex((int)Math.floor((h_tly - oy) / cell), 0, Math.max(0, rows - 1));
-        Cell hTL = new Cell(hR, hC);
-        Point2D hTLpx = cellTopLeftOnOverlay(hTL);
-        double hCenterX = hTLpx.getX() + cell;
-        double hCenterY = hTLpx.getY() + cell/2.0;
-        double hDX = cx - hCenterX;
-        double hDY = cy - hCenterY;
+        double hTopLeftX = centerX - cellSize;
+        double hTopLeftY = centerY - cellSize / 2.0;
+        int hCol = clampIndex((int) Math.floor((hTopLeftX - ox) / cellSize), 0, Math.max(0, colCount - 2));
+        int hRow = clampIndex((int) Math.floor((hTopLeftY - oy) / cellSize), 0, Math.max(0, rowCount - 1));
+        Cell hTopLeft = new Cell(hRow, hCol);
+        Point2D hTopLeftPx = cellTopLeftOnOverlay(hTopLeft);
+        double hCenterX = hTopLeftPx.getX() + cellSize;
+        double hCenterY = hTopLeftPx.getY() + cellSize / 2.0;
+        double hDX = centerX - hCenterX;
+        double hDY = centerY - hCenterY;
 
-        return new CenterSeed(vTL, hTL, vDX, vDY, hDX, hDY);
+        return new CenterSeed(vTopLeft, hTopLeft, vDX, vDY, hDX, hDY);
     }
 
-    private int clampIndex(int v, int lo, int hi) { if (hi < lo) return lo; return Math.max(lo, Math.min(hi, v)); }
-    private boolean inBounds(Cell c) { return c.r >= 0 && c.c >= 0 && c.r < rows && c.c < cols; }
+    // clamps index between safe bounds
+    private int clampIndex(int value, int low, int high) {
+        if (high < low) return low;
+        return Math.max(low, Math.min(high, value));
+    }
 
+    // checks single cell is in grid bounds
+    private boolean inBounds(Cell cell) {
+        return cell.row >= 0 && cell.col >= 0 && cell.row < rowCount && cell.col < colCount;
+    }
+
+    // computes visible table bounds in overlay space
     private Bounds tableAreaOnOverlay() {
-        Node tablePane = tableTop.getParent(); // the StackPane we actually see
+        Node tablePane = tableTop.getParent();
         Bounds tableScene = (tablePane != null ? tablePane.localToScene(tablePane.getBoundsInLocal())
                                                : tableTop.localToScene(tableTop.getBoundsInLocal()));
         return overlay.sceneToLocal(tableScene);
     }
 
-    private Point2D cellTopLeftOnOverlay(Cell c) {
-        Bounds tb = tableAreaOnOverlay();
-        return new Point2D(tb.getMinX() + c.c * cell, tb.getMinY() + c.r * cell);
+    // gets top-left pixel of a cell on overlay
+    private Point2D cellTopLeftOnOverlay(Cell cell) {
+        Bounds tableBounds = tableAreaOnOverlay();
+        return new Point2D(tableBounds.getMinX() + cell.col * cellSize, tableBounds.getMinY() + cell.row * cellSize);
     }
-    private Point2D cellTopLeftOnHint(Cell c) { return new Point2D(c.c * cell, c.r * cell); }
 
+    // gets top-left pixel of a cell on hint layer
+    private Point2D cellTopLeftOnHint(Cell cell) {
+        return new Point2D(cell.col * cellSize, cell.row * cellSize);
+    }
+
+    // advances to the next side
     private void nextTurn() {
         turnManager.next();
-        System.out.println("[Turn->next()] New side: " + turnManager.getTurn());
     }
 
-    private static double clamp(double v, double lo, double hi) { return Math.max(lo, Math.min(hi, v)); }
-    private static boolean almost(double a, double b){ return Math.abs(a-b) < 0.0001; }
+    // clamps a number within limits
+    private static double clamp(double value, double low, double high) { return Math.max(low, Math.min(high, value)); }
+
+    // compares doubles with tiny tolerance
+    private static boolean almost(double a, double b) { return Math.abs(a - b) < 0.0001; }
 
     private static final class Cell {
-        final int r, c;
-        Cell(int r, int c){ this.r=r; this.c=c; }
-        @Override public boolean equals(Object o){ if(!(o instanceof Cell)) return false; Cell x=(Cell)o; return x.r==r && x.c==c; }
-        @Override public int hashCode(){ return Objects.hash(r,c); }
-        @Override public String toString(){ return "("+r+","+c+")"; }
+        final int row, col;
+        Cell(int row, int col) { this.row = row; this.col = col; }
+        @Override public boolean equals(Object o) { if (!(o instanceof Cell)) return false; Cell x = (Cell) o; return x.row == row && x.col == col; }
+        @Override public int hashCode() { return Objects.hash(row, col); }
+        @Override public String toString() { return "(" + row + "," + col + ")"; }
     }
 
     private static final class PlacedDomino {
@@ -789,15 +866,21 @@ public class TableLayout {
         final double offsetX, offsetY;
         final boolean capNorthSouth;
 
-        PlacedDomino(CDominoes m, StackPane n, Cell tl, boolean v, double dx, double dy, boolean capNS){
-            this.model=m; this.node=n; this.topLeft=tl; this.vertical=v; this.offsetX=dx; this.offsetY=dy;
-            this.capNorthSouth = v && capNS;
+        PlacedDomino(CDominoes model, StackPane node, Cell topLeft, boolean vertical, double offsetX, double offsetY, boolean capNorthSouth) {
+            this.model = model; this.node = node; this.topLeft = topLeft; this.vertical = vertical; this.offsetX = offsetX; this.offsetY = offsetY;
+            this.capNorthSouth = vertical && capNorthSouth;
         }
-        boolean isVerticalDouble() { if (!vertical) return false; Integer t=model.getTopValue(), b=model.getBottomValue(); return t!=null&&b!=null&&t.equals(b); }
-        boolean isHorizontalDouble(){ if (vertical) return false; Integer l=model.getLeftValue(), r=model.getRightValue(); return l!=null&&r!=null&&l.equals(r); }
+        boolean isVerticalDouble() {
+            if (!vertical) return false;
+            Integer t = model.getTopValue(), b = model.getBottomValue();
+            return t != null && b != null && t.equals(b);
+        }
+        boolean isHorizontalDouble() {
+            if (vertical) return false;
+            Integer l = model.getLeftValue(), r = model.getRightValue();
+            return l != null && r != null && l.equals(r);
+        }
     }
-
-    /* ------------ read-only snapshot of current anchor requirements ----------- */
 
     public static final class AnchorHint {
         public final boolean vertical;
@@ -813,7 +896,7 @@ public class TableLayout {
         }
     }
 
-    /** Returns an immutable snapshot of current anchors; does not expose positions/offsets. */
+    // returns a read-only list of current anchor needs
     public List<AnchorHint> snapshotAnchors() {
         List<AnchorHint> list = new ArrayList<>(anchors.size());
         for (Anchor a : anchors) {

@@ -1,9 +1,7 @@
 package views;
 
 import javafx.geometry.Pos;
-
 import java.util.ArrayList;
-
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.layout.*;
@@ -18,50 +16,47 @@ public class PauseMenu {
     private final StackPane pauseScreen;
     private final VBox menuPanel;
 
-    // buttons
     private final Button resumeButton = new Button("RESUME");
     private final Button settingsButton = new Button("SETTINGS");
     private final Button resetButton = new Button("MENU");
     private final Button quitButton = new Button("QUIT");
-    ArrayList<Button> buttons = new ArrayList<>();
+    private final ArrayList<Button> menuButtons = new ArrayList<>();
 
-    // lazily-created settings overlay
-    private SettingsMenu settings;
+    private SettingsMenu settingsMenu;
 
-    /** Shared white-framed transparent button style (used by SettingsMenu too). */
-    public static final String FRAME_BUTTON_STYLE =
+    public static final String FRAME_STYLE =
             "-fx-background-color: transparent; " +
             "-fx-text-fill: white; " +
             "-fx-border-color: white; " +
             "-fx-border-width: 5px; " +
             "-fx-border-radius: 10px;";
 
-    /** Apply standard framed style and disable focus-traversal. */
-    public static void applyFramedButtonStyle(Button b) {
-        b.setStyle(FRAME_BUTTON_STYLE);
-        b.setFocusTraversable(false);
+    // applies framed style and disables focus travel
+    public static void applyFramedButtonStyle(Button button) {
+        button.setStyle(FRAME_STYLE);
+        button.setFocusTraversable(false);
     }
 
-    /** Create a dimmer that auto-binds to the given parent’s size. */
-    public static Rectangle createDimmer(StackPane parent, double alpha) {
-        Rectangle dim = new Rectangle();
-        dim.setFill(Color.rgb(0, 0, 0, Math.max(0.0, Math.min(1.0, alpha))));
-        dim.widthProperty().bind(parent.widthProperty());
-        dim.heightProperty().bind(parent.heightProperty());
-        return dim;
+    // creates a dim layer that follows parent size
+    public static Rectangle createDimmer(StackPane parentPane, double opacity) {
+        Rectangle dimmerRect = new Rectangle();
+        dimmerRect.setFill(Color.rgb(0, 0, 0, Math.max(0.0, Math.min(1.0, opacity))));
+        dimmerRect.widthProperty().bind(parentPane.widthProperty());
+        dimmerRect.heightProperty().bind(parentPane.heightProperty());
+        return dimmerRect;
     }
 
+    // builds the pause overlay and menu panel
     public PauseMenu(Stage stage) {
-
-        // overlay over the game table
+        // make overlay over the game table
         pauseScreen = new StackPane();
         pauseScreen.setVisible(false);
         pauseScreen.setPickOnBounds(true);
 
-        // dimmed background (shared helper)
-        Rectangle dimScreen = createDimmer(pauseScreen, 0.55);
+        // make dimmed background
+        Rectangle screenDimmer = createDimmer(pauseScreen, 0.55);
 
-        // vbox to hold buttons, centered
+        // make menu panel and center it
         menuPanel = new VBox(25, resumeButton, settingsButton, resetButton, quitButton);
         menuPanel.setAlignment(Pos.CENTER);
         menuPanel.setPadding(new Insets(20));
@@ -70,106 +65,110 @@ public class PauseMenu {
         menuPanel.setBorder(new Border(new BorderStroke(
                 Color.WHITE, BorderStrokeStyle.SOLID,
                 new CornerRadii(10), new BorderWidths(2))));
-        // prevents children from getting incorrect sizing
         menuPanel.setFillWidth(false);
 
-        // set menu panel to percentage of screen
+        // size the panel to part of the screen
         menuPanel.prefWidthProperty().bind(pauseScreen.widthProperty().multiply(0.40));
         menuPanel.prefHeightProperty().bind(pauseScreen.heightProperty().multiply(0.70));
         menuPanel.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
-        // add dimmer and buttons to the overlay
-        pauseScreen.getChildren().addAll(dimScreen, menuPanel);
+        // add dimmer and menu to overlay
+        pauseScreen.getChildren().addAll(screenDimmer, menuPanel);
         StackPane.setAlignment(menuPanel, Pos.CENTER);
 
-        // add buttons to the button arraylist
-        buttons.add(resumeButton);
-        buttons.add(settingsButton);
-        buttons.add(resetButton);
-        buttons.add(quitButton);
+        // collect buttons for batch styling
+        menuButtons.add(resumeButton);
+        menuButtons.add(settingsButton);
+        menuButtons.add(resetButton);
+        menuButtons.add(quitButton);
 
-        // style and size all buttons at once
-        for (Button button : buttons){
+        // style and size all buttons together
+        for (Button button : menuButtons) {
             applyFramedButtonStyle(button);
 
-            // sizes buttons relative to the panel
+            // size buttons by panel size
             button.prefWidthProperty().bind(menuPanel.widthProperty().multiply(0.50));
             button.prefHeightProperty().bind(menuPanel.heightProperty().multiply(0.20));
             button.setMinHeight(32);
 
-            // keeps VBox from autofilling buttons
+            // stop vbox from stretching buttons
             button.setMaxWidth(Region.USE_PREF_SIZE);
             button.setMaxHeight(Region.USE_PREF_SIZE);
 
-            // font scales with button height
-            button.heightProperty().addListener((obs, oh, nh) ->
-                    button.setFont(Font.font(nh.doubleValue() * 0.25)));
+            // scale font with height
+            button.heightProperty().addListener((obs, oldSize, newSize) ->
+                    button.setFont(Font.font(newSize.doubleValue() * 0.25)));
         }
 
-        // button actions
+        // wire resume action
         resumeButton.setOnAction(e -> hide());
 
         // open settings overlay
         settingsButton.setOnAction(e -> {
-            if (settings == null) {
-                settings = new SettingsMenu(stage, this);
+            if (settingsMenu == null) {
+                settingsMenu = new SettingsMenu(stage, this);
             }
             Parent parent = pauseScreen.getParent();
             if (parent instanceof Pane host) {
-                if (!host.getChildren().contains(settings.getView())) {
-                    host.getChildren().add(settings.getView());
+                if (!host.getChildren().contains(settingsMenu.getView())) {
+                    host.getChildren().add(settingsMenu.getView());
                     if (host instanceof AnchorPane) {
-                        AnchorPane.setTopAnchor(settings.getView(), 0.0);
-                        AnchorPane.setRightAnchor(settings.getView(), 0.0);
-                        AnchorPane.setBottomAnchor(settings.getView(), 0.0);
-                        AnchorPane.setLeftAnchor(settings.getView(), 0.0);
+                        AnchorPane.setTopAnchor(settingsMenu.getView(), 0.0);
+                        AnchorPane.setRightAnchor(settingsMenu.getView(), 0.0);
+                        AnchorPane.setBottomAnchor(settingsMenu.getView(), 0.0);
+                        AnchorPane.setLeftAnchor(settingsMenu.getView(), 0.0);
                     }
                 }
                 this.hide();
-                settings.show();
-                settings.getView().toFront();
+                settingsMenu.show();
+                settingsMenu.getView().toFront();
             }
         });
 
+        // return to main menu
         resetButton.setOnAction(e -> {
             hide();
-
-            // swap to a fresh main menu with a frozen crossfade (prevents window from resizing weird when crossfading)
             Parent menuRoot = new MainMenu(stage).createRoot();
             SceneTransition.fadeIntoScene(stage, menuRoot, Duration.millis(600));
         });
+
+        // quit the game
         quitButton.setOnAction(e -> stage.close());
     }
 
-    // show/hide methods
+    // shows the pause overlay
     public void show() {
         pauseScreen.setVisible(true);
         pauseScreen.toFront();
         pauseScreen.requestFocus();
     }
 
+    // hides the pause overlay
     public void hide() {
         pauseScreen.setVisible(false);
     }
 
-    // expose the root node so CTable can display
+    // returns the root overlay node
     public StackPane getView() {
         return pauseScreen;
     }
 
-    // getters for buttons (currently unused)
+    // gets the resume button node
     public Button getResumeButton() {
         return resumeButton;
     }
 
+    // gets the settings button node
     public Button getSettingsButton() {
         return settingsButton;
     }
 
+    // gets the menu button node
     public Button getResetButton() {
         return resetButton;
     }
 
+    // gets the quit button node
     public Button getQuitButton() {
         return quitButton;
     }

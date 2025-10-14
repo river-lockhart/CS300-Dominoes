@@ -20,80 +20,82 @@ public class MainMenu {
         this.stage = stage;
     }
 
-    // root to allow crossfade between scenes
+    // builds the main menu root layout
     public Parent createRoot() {
+        // make base layout container
         BorderPane root = new BorderPane();
 
-        // create buttons
+        // build play and exit buttons
         Button playButton = new Button("Play");
         Button exitButton = new Button("Exit");
 
-        // removes focus from buttons (prevent accidental close out...trial and error lol)
+        // remove focus to prevent accidental key actions
         playButton.setFocusTraversable(false);
         exitButton.setFocusTraversable(false);
 
-        // button action
+        // set up play button action
         playButton.setOnAction(e -> {
-            // reset game state here with fresh instances
+            // reset game state with fresh instances
             Hand hand = new Hand();
             CPlayer player = new CPlayer();
             AvailablePieces remainingPieces = new AvailablePieces(hand);
 
+            // build table view and crossfade to it
             var turnManager = new controllers.TurnManager();
             var tableRoot = new CTable(stage, hand, remainingPieces, player, turnManager).createRoot();
             SceneTransition.fadeIntoScene(stage, tableRoot, Duration.millis(600));
         });
 
+        // set up exit button action
         exitButton.setOnAction(e -> stage.close());
 
-        // transparent buttons 
+        // style transparent buttons with white borders
         playButton.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 5px; -fx-border-radius: 10px;");
         exitButton.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 5px; -fx-border-radius: 10px;");
 
-        // create box for button alignment
-        VBox buttonsOnRight = new VBox(60, playButton, exitButton);
-        buttonsOnRight.setPadding(new Insets(20));
-        buttonsOnRight.setStyle("-fx-alignment: center-right;");
-        root.setRight(buttonsOnRight);
+        // place buttons on the right side
+        VBox rightButtons = new VBox(60, playButton, exitButton);
+        rightButtons.setPadding(new Insets(20));
+        rightButtons.setStyle("-fx-alignment: center-right;");
+        root.setRight(rightButtons);
 
-        // background image
-        var url = getClass().getResource("/assets/menu/mainmenu.jpg");
-        if (url != null) {
-            var img = new Image(url.toExternalForm());
-            var background = new Background(new BackgroundImage(
-                    img,
+        // set background image if available
+        var imageUrl = getClass().getResource("/assets/menu/mainmenu.jpg");
+        if (imageUrl != null) {
+            Image image = new Image(imageUrl.toExternalForm());
+            Background menuBackground = new Background(new BackgroundImage(
+                    image,
                     BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT,
                     BackgroundPosition.CENTER,
                     new BackgroundSize(BackgroundSize.AUTO, BackgroundSize.AUTO, false, false, true, true)
             ));
-            root.setBackground(background);
+            root.setBackground(menuBackground);
         }
 
-        // ✅ size bindings that work both when inserted into the current Scene
-        //    (during cross-fade) and when used to create a fresh Scene.
-        // use the live stage scene if present; otherwise fall back to root size
+        // use existing scene or fall back to root sizing
         var scene = stage.getScene();
 
-        // use computed sizing so our pref bindings take effect
+        // use computed size so font scaling works
         playButton.setMinSize(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE);
         playButton.setMaxSize(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE);
         exitButton.setMinSize(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE);
         exitButton.setMaxSize(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE);
 
+        // bind size to live scene when present
         if (scene != null) {
             playButton.prefWidthProperty().bind(scene.widthProperty().multiply(0.25));
             playButton.prefHeightProperty().bind(scene.heightProperty().multiply(0.15));
             exitButton.prefWidthProperty().bind(scene.widthProperty().multiply(0.15));
             exitButton.prefHeightProperty().bind(scene.heightProperty().multiply(0.15));
         } else {
-            // fallback (e.g., if someone uses createRoot() before attaching a Scene)
+            // fallback bindings when no scene yet
             playButton.prefWidthProperty().bind(root.widthProperty().multiply(0.25));
             playButton.prefHeightProperty().bind(root.heightProperty().multiply(0.15));
             exitButton.prefWidthProperty().bind(root.widthProperty().multiply(0.15));
             exitButton.prefHeightProperty().bind(root.heightProperty().multiply(0.15));
         }
 
-        // flex font size based on the height of the buttons
+        // scale font with button height
         playButton.heightProperty().addListener((obs, oldVal, newVal) ->
                 playButton.setFont(Font.font(newVal.doubleValue() * 0.4))
         );
@@ -104,26 +106,27 @@ public class MainMenu {
         return root;
     }
 
+    // builds a new scene for the main menu
     public Scene createScene() {
-        // parent box
+        // build root from helper method
         BorderPane root = (BorderPane) createRoot();
 
-        // create scene
+        // create a fresh scene object
         Scene scene = new Scene(root);
 
-        // create buttons
+        // get buttons from the right side box
         Button playButton = (Button) ((VBox) root.getRight()).getChildren().get(0);
         Button exitButton = (Button) ((VBox) root.getRight()).getChildren().get(1);
 
-        // set button dimension properties (rebind to this fresh Scene)
+        // clear old size bindings from prior scene
         playButton.prefWidthProperty().unbind();
         playButton.prefHeightProperty().unbind();
         exitButton.prefWidthProperty().unbind();
         exitButton.prefHeightProperty().unbind();
 
+        // bind button size to this scene
         playButton.prefWidthProperty().bind(scene.widthProperty().multiply(0.25));
         playButton.prefHeightProperty().bind(scene.heightProperty().multiply(0.15));
-
         exitButton.prefWidthProperty().bind(scene.widthProperty().multiply(0.15));
         exitButton.prefHeightProperty().bind(scene.heightProperty().multiply(0.15));
 

@@ -5,68 +5,61 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-/**
- * Boneyard / remaining tiles after the initial deal.
- * Overlay (and draw-until-playable) read from here.
- */
 public class AvailablePieces {
 
     private final ArrayList<CDominoes> leftoverDominoes = new ArrayList<>();
-    private final Random rng = new Random();
+    private final Random randomSource = new Random();
 
+    // creates empty boneyard tiles list
     public AvailablePieces() {}
 
-    /** Construct from an explicit list of leftovers. */
-    public AvailablePieces(List<CDominoes> seed) {
-        if (seed != null) leftoverDominoes.addAll(seed);
+    // creates boneyard from given tiles list
+    public AvailablePieces(List<CDominoes> startTiles) {
+        if (startTiles != null) leftoverDominoes.addAll(startTiles);
     }
 
-    /**
-     * Back-compat: construct from Hand.
-     * IMPORTANT: change the method name below to whatever your Hand uses
-     * for "the deck tiles that were NOT dealt".
-     */
+    // creates boneyard from hand leftovers
     public AvailablePieces(Hand hand) {
         if (hand != null) {
-            // ⬇️ CHANGE THIS if your Hand uses a different name
-            List<CDominoes> leftoversFromHand = hand.leftoverDominoes();
-            if (leftoversFromHand != null) leftoverDominoes.addAll(leftoversFromHand);
+            List<CDominoes> handLeftovers = hand.leftoverDominoes();
+            if (handLeftovers != null) leftoverDominoes.addAll(handLeftovers);
         }
     }
 
-    /** Live list (mutable). Overlay uses this via the supplier. */
+    // returns live list for direct use
     public ArrayList<CDominoes> getLeftoverDominoes() {
         return leftoverDominoes;
     }
 
-    /** Safe read-only view. */
+    // returns unchangeable view of leftovers
     public List<CDominoes> view() {
         return Collections.unmodifiableList(leftoverDominoes);
     }
 
+    // returns number of leftover tiles
     public int size() { return leftoverDominoes.size(); }
+
+    // returns if no leftover tiles remain
     public boolean isEmpty() { return leftoverDominoes.isEmpty(); }
 
-    /** Removes and returns a random tile, or null if empty. */
+    // removes and returns random tile or null
+    // logs size before and after removal
     public CDominoes drawRandom() {
         if (leftoverDominoes.isEmpty()) {
             System.out.println("[boneyard] drawRandom: EMPTY");
             return null;
         }
-        int before = leftoverDominoes.size();
-        int idx = rng.nextInt(leftoverDominoes.size());
-        CDominoes picked = leftoverDominoes.remove(idx);
-        int after = leftoverDominoes.size();
-        System.out.println("[boneyard] removed idx=" + idx + " tile=" + picked
-                + " | size " + before + " -> " + after);
-        return picked;
+        int sizeBefore = leftoverDominoes.size();
+        int pickIndex = randomSource.nextInt(leftoverDominoes.size());
+        CDominoes pickedTile = leftoverDominoes.remove(pickIndex);
+        int sizeAfter = leftoverDominoes.size();
+        return pickedTile;
     }
 
-    /** Put a tile back (e.g., for undo). */
-    public void putBack(CDominoes d) {
-        if (d != null) {
-            leftoverDominoes.add(d);
-            System.out.println("[boneyard] putBack: " + d + " | size -> " + leftoverDominoes.size());
+    // adds tile back into leftovers
+    public void putBack(CDominoes tile) {
+        if (tile != null) {
+            leftoverDominoes.add(tile);
         }
     }
 }

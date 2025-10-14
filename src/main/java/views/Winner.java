@@ -21,33 +21,35 @@ public class Winner {
     private final Button menuButton = new Button("MENU");
     private final Button exitButton = new Button("EXIT");
 
+    // builds winner overlay and wires buttons
     public Winner(Stage stage) {
-        // root overlay
+        // make overlay layer
         overlay = new StackPane();
         overlay.setVisible(false);
         overlay.setPickOnBounds(true);
 
-        // dimmer
+        // add dim background
         Rectangle dim = new Rectangle();
         dim.setFill(Color.rgb(0, 0, 0, 0.55));
         dim.widthProperty().bind(overlay.widthProperty());
         dim.heightProperty().bind(overlay.heightProperty());
 
-        // title
+        // set title style
         title.setFill(Color.WHITE);
         title.setStyle("-fx-font-weight: bold;");
-        // responsive font size
-        overlay.heightProperty().addListener((o, oh, nh) -> {
-            double h = nh == null ? 800 : nh.doubleValue();
+
+        // scale title with overlay height
+        overlay.heightProperty().addListener((obs, oldHeight, newHeight) -> {
+            double h = newHeight == null ? 800 : newHeight.doubleValue();
             title.setFont(Font.font(Math.max(28, h * 0.08)));
         });
 
-        // buttons row or column
-        HBox buttons = new HBox(25, menuButton, exitButton);
-        buttons.setAlignment(Pos.CENTER);
+        // build buttons row
+        HBox buttonRow = new HBox(25, menuButton, exitButton);
+        buttonRow.setAlignment(Pos.CENTER);
 
-        // panel
-        panel = new VBox(30, title, buttons);
+        // build panel container
+        panel = new VBox(30, title, buttonRow);
         panel.setAlignment(Pos.CENTER);
         panel.setPadding(new Insets(24));
         panel.setBackground(new Background(
@@ -57,24 +59,29 @@ public class Winner {
                 new CornerRadii(10), new BorderWidths(2))));
         panel.setFillWidth(false);
 
+        // size panel by overlay size
         panel.prefWidthProperty().bind(overlay.widthProperty().multiply(0.40));
         panel.prefHeightProperty().bind(overlay.heightProperty().multiply(0.40));
         panel.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
-        // style buttons to match PauseMenu look
-        for (Button b : new Button[]{menuButton, exitButton}) {
-            b.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 5px; -fx-border-radius: 10px;");
-            b.setFocusTraversable(false);
+        // style buttons to match pause menu
+        for (Button button : new Button[]{menuButton, exitButton}) {
+            button.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 5px; -fx-border-radius: 10px;");
+            button.setFocusTraversable(false);
 
-            b.prefWidthProperty().bind(panel.widthProperty().multiply(0.40));
-            b.prefHeightProperty().bind(panel.heightProperty().multiply(0.22));
-            b.setMinHeight(32);
-            b.setMaxWidth(Region.USE_PREF_SIZE);
-            b.setMaxHeight(Region.USE_PREF_SIZE);
-            b.heightProperty().addListener((obs, oh, nh) -> b.setFont(Font.font(nh.doubleValue() * 0.25)));
+            // size buttons by panel size
+            button.prefWidthProperty().bind(panel.widthProperty().multiply(0.40));
+            button.prefHeightProperty().bind(panel.heightProperty().multiply(0.22));
+            button.setMinHeight(32);
+            button.setMaxWidth(Region.USE_PREF_SIZE);
+            button.setMaxHeight(Region.USE_PREF_SIZE);
+
+            // scale font with height
+            button.heightProperty().addListener((obs, oldHeight, newHeight) ->
+                    button.setFont(Font.font(newHeight.doubleValue() * 0.25)));
         }
 
-        // actions
+        // wire button actions
         menuButton.setOnAction(e -> {
             hide();
             Parent menuRoot = new MainMenu(stage).createRoot();
@@ -82,12 +89,15 @@ public class Winner {
         });
         exitButton.setOnAction(e -> stage.close());
 
+        // mount panel into overlay
         overlay.getChildren().addAll(dim, panel);
         StackPane.setAlignment(panel, Pos.CENTER);
     }
 
+    // returns the overlay node
     public StackPane getView() { return overlay; }
 
+    // shows overlay with given winner text
     public void show(String text) {
         title.setText(text == null ? "" : text);
         overlay.setVisible(true);
@@ -95,5 +105,6 @@ public class Winner {
         overlay.requestFocus();
     }
 
+    // hides the overlay
     public void hide() { overlay.setVisible(false); }
 }

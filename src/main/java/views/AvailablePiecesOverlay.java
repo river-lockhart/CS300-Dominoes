@@ -16,187 +16,177 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-/**
- * Minimal floating overlay: a compact card in the top-right that shows a grid of items.
- * - No fullscreen sheet; just a small panel sized to fixed cells (so background matches content).
- * - Click outside the panel to dismiss (scene-level filter).
- * - No title/close button; toggle via your button.
- */
 public class AvailablePiecesOverlay<T> {
 
-    private final Pane host;                      // layered above the table (e.g., CTable root AnchorPane)
-    private final Supplier<List<T>> supplier;     // provides current items
-    private final Function<T, Node> renderer;     // renders a tiny domino (no borders)
+    private final Pane hostPane;
+    private final Supplier<List<T>> itemSource;
+    private final Function<T, Node> itemRenderer;
 
-    private final StackPane panel = new StackPane();
-    private final GridPane grid = new GridPane();
+    private final StackPane cardPanel = new StackPane();
+    private final GridPane itemGrid = new GridPane();
 
-    private int cols = 4;
-    private int rows = 2;
-    private boolean showing = false;
+    private int colCount = 4;
+    private int rowCount = 2;
+    private boolean isShowing = false;
 
-    // Fixed cell size so the panel background always matches the domino footprint
-    private double CELL_W = 64;
-    private double CELL_H = 64;
-    private double HGAP   = 8;
-    private double VGAP   = 8;
+    private double cellWidth = 64;
+    private double cellHeight = 64;
+    private double horizontalGap = 8;
+    private double verticalGap = 8;
 
-    // scene-level click-away filter (no big transparent node)
-    private final javafx.event.EventHandler<MouseEvent> clickAway = e -> {
-        if (!showing) return;
-        Object tgt = e.getTarget();
-        if (tgt instanceof Node) {
-            Node n = (Node) tgt;
-            if (isDescendantOf(n, panel)) return; // click inside panel → ignore
+    private final javafx.event.EventHandler<MouseEvent> clickAwayFilter = e -> {
+        if (!isShowing) return;
+        Object target = e.getTarget();
+        if (target instanceof Node) {
+            Node node = (Node) target;
+            if (isDescendantOf(node, cardPanel)) return;
         }
         hide();
     };
 
-    public AvailablePiecesOverlay(Pane host,
-                                  Supplier<List<T>> supplier,
-                                  Function<T, Node> renderer) {
-        this.host = Objects.requireNonNull(host);
-        this.supplier = Objects.requireNonNull(supplier);
-        this.renderer = Objects.requireNonNull(renderer);
+    // builds overlay card and positions it at top right
+    public AvailablePiecesOverlay(Pane hostPane,
+                                  Supplier<List<T>> itemSource,
+                                  Function<T, Node> itemRenderer) {
+        this.hostPane = Objects.requireNonNull(hostPane);
+        this.itemSource = Objects.requireNonNull(itemSource);
+        this.itemRenderer = Objects.requireNonNull(itemRenderer);
 
-        // tiny floating card; sized strictly to content
-        panel.setBackground(new Background(new BackgroundFill(
+        cardPanel.setBackground(new Background(new BackgroundFill(
                 Color.rgb(20,20,20,0.92), new CornerRadii(10), Insets.EMPTY)));
-        panel.setBorder(new Border(new BorderStroke(
+        cardPanel.setBorder(new Border(new BorderStroke(
                 Color.color(1,1,1,0.08), BorderStrokeStyle.SOLID, new CornerRadii(10), new BorderWidths(1))));
-        panel.setPadding(new Insets(8));
-        panel.setPickOnBounds(true);
-        panel.setMouseTransparent(false);
-        panel.setVisible(false);
-        panel.setManaged(false); // manual positioning
+        cardPanel.setPadding(new Insets(8));
+        cardPanel.setPickOnBounds(true);
+        cardPanel.setMouseTransparent(false);
+        cardPanel.setVisible(false);
+        cardPanel.setManaged(false);
 
-        // grid inside the card
-        grid.setHgap(HGAP);
-        grid.setVgap(VGAP);
-        grid.setAlignment(Pos.CENTER);
-        panel.getChildren().add(grid);
+        itemGrid.setHgap(horizontalGap);
+        itemGrid.setVgap(verticalGap);
+        itemGrid.setAlignment(Pos.CENTER);
+        cardPanel.getChildren().add(itemGrid);
 
-        // clicks inside the panel shouldn't close it
-        panel.addEventFilter(MouseEvent.MOUSE_PRESSED, MouseEvent::consume);
+        cardPanel.addEventFilter(MouseEvent.MOUSE_PRESSED, MouseEvent::consume);
 
-        // mount panel once; keep hidden until show()
-        host.getChildren().add(panel);
+        hostPane.getChildren().add(cardPanel);
 
-        // robust top-right positioning (works for any Pane)
-        final double MARGIN_TOP   = 10.0;
-        final double MARGIN_RIGHT = 16.0; // nudge so the 4th column stays visible
-        panel.layoutYProperty().set(MARGIN_TOP);
+        double marginTop = 10.0;
+        double marginRight = 16.0;
+        cardPanel.layoutYProperty().set(marginTop);
 
-        // clamp X to avoid peeking off the right, even as images load
-        panel.layoutXProperty().bind(Bindings.createDoubleBinding(
-                () -> Math.max(0.0, host.getWidth() - panel.getWidth() - MARGIN_RIGHT),
-                host.widthProperty(), panel.widthProperty()
+        cardPanel.layoutXProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(0.0, hostPane.getWidth() - cardPanel.getWidth() - marginRight),
+                hostPane.widthProperty(), cardPanel.widthProperty()
         ));
 
-        // keep the panel as small as the grid + padding
-        panel.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        cardPanel.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
     }
 
-    /** Configure grid size (defaults 4×2). */
+    // sets grid columns and rows
     public void setGrid(int cols, int rows) {
-        this.cols = Math.max(1, cols);
-        this.rows = Math.max(1, rows);
-        if (showing) refresh();
+        this.colCount = Math.max(1, cols);
+        this.rowCount = Math.max(1, rows);
+        if (isShowing) refresh();
     }
 
-    /** Optionally tweak the fixed cell size (defaults 64×64). */
-    public void setCellSize(double w, double h) {
-        this.CELL_W = Math.max(24, w);
-        this.CELL_H = Math.max(24, h);
-        if (showing) refresh();
+    // sets fixed cell width and height
+    public void setCellSize(double width, double height) {
+        this.cellWidth = Math.max(24, width);
+        this.cellHeight = Math.max(24, height);
+        if (isShowing) refresh();
     }
 
-    public void toggle() { if (showing) hide(); else show(); }
+    // toggles overlay visibility
+    public void toggle() { if (isShowing) hide(); else show(); }
 
+    // shows overlay and installs click-away handler
     public void show() {
-        if (showing) return;
+        if (isShowing) return;
         refresh();
-        panel.setVisible(true);
-        showing = true;
+        cardPanel.setVisible(true);
+        isShowing = true;
 
-        Scene sc = sceneOf(host);
-        if (sc != null) sc.addEventFilter(MouseEvent.MOUSE_PRESSED, clickAway);
+        Scene scene = sceneOf(hostPane);
+        if (scene != null) scene.addEventFilter(MouseEvent.MOUSE_PRESSED, clickAwayFilter);
     }
 
+    // hides overlay and removes click-away handler
     public void hide() {
-        if (!showing) return;
-        panel.setVisible(false);
-        showing = false;
+        if (!isShowing) return;
+        cardPanel.setVisible(false);
+        isShowing = false;
 
-        Scene sc = sceneOf(host);
-        if (sc != null) sc.removeEventFilter(MouseEvent.MOUSE_PRESSED, clickAway);
+        Scene scene = sceneOf(hostPane);
+        if (scene != null) scene.removeEventFilter(MouseEvent.MOUSE_PRESSED, clickAwayFilter);
     }
 
-    /** Rebuild grid with fixed-size slots so background always matches content. */
+    // rebuilds grid to match fixed cell sizes
+    // computes row and column using index math
     private void refresh() {
-        grid.getChildren().clear();
-        grid.getColumnConstraints().clear();
-        grid.getRowConstraints().clear();
+        itemGrid.getChildren().clear();
+        itemGrid.getColumnConstraints().clear();
+        itemGrid.getRowConstraints().clear();
 
-        // build fixed constraints for a predictable panel size
-        List<ColumnConstraints> cc = new ArrayList<>(cols);
-        for (int c = 0; c < cols; c++) {
-            ColumnConstraints col = new ColumnConstraints();
-            col.setMinWidth(CELL_W);
-            col.setPrefWidth(CELL_W);
-            col.setMaxWidth(CELL_W);
-            cc.add(col);
+        List<ColumnConstraints> columnRules = new ArrayList<>(colCount);
+        for (int col = 0; col < colCount; col++) {
+            ColumnConstraints colRule = new ColumnConstraints();
+            colRule.setMinWidth(cellWidth);
+            colRule.setPrefWidth(cellWidth);
+            colRule.setMaxWidth(cellWidth);
+            columnRules.add(colRule);
         }
-        grid.getColumnConstraints().addAll(cc);
+        itemGrid.getColumnConstraints().addAll(columnRules);
 
-        List<RowConstraints> rc = new ArrayList<>(rows);
-        for (int r = 0; r < rows; r++) {
-            RowConstraints row = new RowConstraints();
-            row.setMinHeight(CELL_H);
-            row.setPrefHeight(CELL_H);
-            row.setMaxHeight(CELL_H);
-            rc.add(row);
+        List<RowConstraints> rowRules = new ArrayList<>(rowCount);
+        for (int row = 0; row < rowCount; row++) {
+            RowConstraints rowRule = new RowConstraints();
+            rowRule.setMinHeight(cellHeight);
+            rowRule.setPrefHeight(cellHeight);
+            rowRule.setMaxHeight(cellHeight);
+            rowRules.add(rowRule);
         }
-        grid.getRowConstraints().addAll(rc);
+        itemGrid.getRowConstraints().addAll(rowRules);
 
-        List<T> items = supplier.get();
+        List<T> items = itemSource.get();
         if (items != null && !items.isEmpty()) {
-            int max = Math.min(items.size(), cols * rows);
-            for (int i = 0; i < max; i++) {
-                int r = i / cols;
-                int c = i % cols;
+            int maxItems = Math.min(items.size(), colCount * rowCount);
+            for (int i = 0; i < maxItems; i++) {
+                int row = i / colCount;
+                int col = i % colCount;
 
-                Node content = renderer.apply(items.get(i));
-                // wrap in a fixed-size cell so the panel width/height are correct immediately
+                Node content = itemRenderer.apply(items.get(i));
+
                 StackPane slot = new StackPane(content);
                 slot.setAlignment(Pos.CENTER);
-                slot.setMinSize(CELL_W, CELL_H);
-                slot.setPrefSize(CELL_W, CELL_H);
-                slot.setMaxSize(CELL_W, CELL_H);
+                slot.setMinSize(cellWidth, cellHeight);
+                slot.setPrefSize(cellWidth, cellHeight);
+                slot.setMaxSize(cellWidth, cellHeight);
                 GridPane.setFillWidth(slot, false);
                 GridPane.setFillHeight(slot, false);
 
-                grid.add(slot, c, r);
+                itemGrid.add(slot, col, row);
             }
         }
 
-        // snap to final size so position clamp uses accurate width
-        panel.applyCss();
-        panel.autosize();
+        cardPanel.applyCss();
+        cardPanel.autosize();
     }
 
-    /** Allow host to live-refresh while open (e.g., after draws). */
+    // refreshes grid only when overlay is showing
     public void refreshIfShowing() {
-        if (showing) refresh();
+        if (isShowing) refresh();
     }
 
-    private static boolean isDescendantOf(Node n, Parent p) {
-        while (n != null) {
-            if (n == p) return true;
-            n = n.getParent();
+    // checks if node is inside the given parent
+    private static boolean isDescendantOf(Node node, Parent parent) {
+        while (node != null) {
+            if (node == parent) return true;
+            node = node.getParent();
         }
         return false;
     }
 
-    private static Scene sceneOf(Node n) { return n == null ? null : n.getScene(); }
+    // returns the scene for the given node
+    private static Scene sceneOf(Node node) { return node == null ? null : node.getScene(); }
 }

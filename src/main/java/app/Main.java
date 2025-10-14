@@ -60,7 +60,7 @@ public class Main extends Application {
         });
 
         // background music
-        Music.playSongOnLoop("/assets/music/Song1.mp3", 0.6);
+        Music.playSongOnLoop("/assets/music/Song1.mp3", 0.2);
     }
 
     public static void main(String[] args) {

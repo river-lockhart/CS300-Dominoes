@@ -21,40 +21,33 @@ public class SettingsMenu {
     private final StackPane pauseScreen;
     private final VBox menuPanel;
 
-    // volume slider controls
     private final Slider volumeSlider = new Slider(0, 10, 6);
     private final Label volumeLabel = new Label("VOLUME");
 
-    // window mode switch controls
     private final Label modeLabel = new Label("FULLSCREEN");
-    private final Button caretLeft = new Button("◀");
-    private final Button caretRight = new Button("▶");
+    private final Button arrowLeft = new Button("◀");
+    private final Button arrowRight = new Button("▶");
 
-    // back button
     private final Button backButton = new Button("BACK");
 
-    // for  tick alignment
     private final StackPane sliderStack = new StackPane();
     private final Pane tickPane = new Pane();
     private static final int TICK_DIVISIONS = 10;
     private static final double TICK_WIDTH = 3.0;
 
-    // boxes for window mode parts
     private final HBox modeRow = new HBox(12);
-    private final StackPane caretBoxLeft = new StackPane();
-    private final StackPane caretBoxRight = new StackPane();
+    private final StackPane arrowBoxLeft = new StackPane();
+    private final StackPane arrowBoxRight = new StackPane();
     private final StackPane modeBox = new StackPane();
 
+    // builds the settings overlay and connects behaviors
     public SettingsMenu(Stage stage, PauseMenu pauseMenu) {
-        // overlay over the pause menu
         pauseScreen = new StackPane();
         pauseScreen.setVisible(false);
         pauseScreen.setPickOnBounds(true);
 
-        // dimmed background (re-use helper)
         Rectangle dimScreen = PauseMenu.createDimmer(pauseScreen, 0.55);
 
-        // panel for the settings pieces
         menuPanel = new VBox();
         menuPanel.setAlignment(Pos.CENTER);
         menuPanel.setPadding(new Insets(20));
@@ -65,32 +58,25 @@ public class SettingsMenu {
                 new CornerRadii(10), new BorderWidths(2))));
         menuPanel.setFillWidth(false);
 
-        // set panel size to be a percent of the overlay
         menuPanel.prefWidthProperty().bind(pauseScreen.widthProperty().multiply(0.40));
         menuPanel.prefHeightProperty().bind(pauseScreen.heightProperty().multiply(0.70));
         menuPanel.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
-        // back button (re-use helper style)
         PauseMenu.applyFramedButtonStyle(backButton);
-        // change size based on panel
         backButton.prefWidthProperty().bind(menuPanel.widthProperty().multiply(0.50));
         backButton.prefHeightProperty().bind(menuPanel.heightProperty().multiply(0.18));
         backButton.setMinHeight(36);
 
-        // volume label above slider
         volumeLabel.setTextFill(Color.WHITE);
         volumeLabel.setAlignment(Pos.CENTER);
         volumeLabel.setMaxWidth(Double.MAX_VALUE);
-        // change size based on back button
         volumeLabel.prefWidthProperty().bind(backButton.widthProperty());
 
-        // match the size of the slider with the size of the back button
         sliderStack.setPickOnBounds(false);
         sliderStack.prefWidthProperty().bind(backButton.widthProperty());
         sliderStack.minWidthProperty().bind(backButton.widthProperty());
         sliderStack.maxWidthProperty().bind(backButton.widthProperty());
 
-        // set up how the slider functions
         volumeSlider.setBlockIncrement(1);
         volumeSlider.setMajorTickUnit(1);
         volumeSlider.setMinorTickCount(0);
@@ -101,7 +87,6 @@ public class SettingsMenu {
         volumeSlider.prefWidthProperty().bind(sliderStack.widthProperty());
         sliderStack.getChildren().add(volumeSlider);
 
-        // overlay the ticks on the slider
         tickPane.setMouseTransparent(true);
         tickPane.prefWidthProperty().bind(sliderStack.widthProperty());
         tickPane.minWidthProperty().bind(sliderStack.widthProperty());
@@ -113,10 +98,9 @@ public class SettingsMenu {
         sliderStack.getChildren().add(tickPane);
         buildTicks(tickPane, TICK_DIVISIONS);
 
-        VBox volCol = new VBox(8, volumeLabel, sliderStack);
-        volCol.setAlignment(Pos.CENTER);
+        VBox volumeColumn = new VBox(8, volumeLabel, sliderStack);
+        volumeColumn.setAlignment(Pos.CENTER);
 
-        // change size of window mode box with back button
         modeRow.setAlignment(Pos.CENTER_LEFT);
         modeRow.prefWidthProperty().bind(backButton.widthProperty());
         modeRow.minWidthProperty().bind(backButton.widthProperty());
@@ -125,181 +109,169 @@ public class SettingsMenu {
         modeRow.minHeightProperty().bind(backButton.heightProperty());
         modeRow.maxHeightProperty().bind(backButton.heightProperty());
 
-        // add border the window mode pieces
         String boxStyle = "-fx-background-color: transparent; -fx-border-color: white; -fx-border-width: 5px; -fx-border-radius: 10px; -fx-background-radius: 10px;";
-        caretBoxLeft.setStyle(boxStyle);
-        caretBoxRight.setStyle(boxStyle);
+        arrowBoxLeft.setStyle(boxStyle);
+        arrowBoxRight.setStyle(boxStyle);
         modeBox.setStyle(boxStyle);
 
-        // style the carets (arrows that change window mode)
-        String caretBtnStyle = "-fx-background-color: transparent; -fx-text-fill: white;";
-        caretLeft.setStyle(caretBtnStyle);
-        caretRight.setStyle(caretBtnStyle);
-        caretLeft.setFocusTraversable(false);
-        caretRight.setFocusTraversable(false);
-        caretBoxLeft.getChildren().add(caretLeft);
-        caretBoxRight.getChildren().add(caretRight);
-        StackPane.setAlignment(caretLeft, Pos.CENTER);
-        StackPane.setAlignment(caretRight, Pos.CENTER);
+        String arrowButtonStyle = "-fx-background-color: transparent; -fx-text-fill: white;";
+        arrowLeft.setStyle(arrowButtonStyle);
+        arrowRight.setStyle(arrowButtonStyle);
+        arrowLeft.setFocusTraversable(false);
+        arrowRight.setFocusTraversable(false);
+        arrowBoxLeft.getChildren().add(arrowLeft);
+        arrowBoxRight.getChildren().add(arrowRight);
+        StackPane.setAlignment(arrowLeft, Pos.CENTER);
+        StackPane.setAlignment(arrowRight, Pos.CENTER);
 
-        // set height of each section
-        for (Region r : new Region[]{caretBoxLeft, caretBoxRight, modeBox}) {
-            r.prefHeightProperty().bind(modeRow.heightProperty());
-            r.minHeightProperty().bind(modeRow.heightProperty());
-            r.maxHeightProperty().bind(modeRow.heightProperty());
+        for (Region region : new Region[]{arrowBoxLeft, arrowBoxRight, modeBox}) {
+            region.prefHeightProperty().bind(modeRow.heightProperty());
+            region.minHeightProperty().bind(modeRow.heightProperty());
+            region.maxHeightProperty().bind(modeRow.heightProperty());
         }
 
-        // make caret 10% of box and textbox 90%
-        DoubleBinding usableW = Bindings.createDoubleBinding(
+        DoubleBinding usableWidth = Bindings.createDoubleBinding(
                 () -> Math.max(0, modeRow.getWidth() - modeRow.getSpacing()),
                 modeRow.widthProperty()
         );
 
-        caretBoxLeft.prefWidthProperty().bind(usableW.multiply(0.10));
-        caretBoxLeft.minWidthProperty().bind(usableW.multiply(0.10));
-        caretBoxLeft.maxWidthProperty().bind(usableW.multiply(0.10));
-        caretBoxRight.prefWidthProperty().bind(usableW.multiply(0.10));
-        caretBoxRight.minWidthProperty().bind(usableW.multiply(0.10));
-        caretBoxRight.maxWidthProperty().bind(usableW.multiply(0.10));
+        arrowBoxLeft.prefWidthProperty().bind(usableWidth.multiply(0.10));
+        arrowBoxLeft.minWidthProperty().bind(usableWidth.multiply(0.10));
+        arrowBoxLeft.maxWidthProperty().bind(usableWidth.multiply(0.10));
+        arrowBoxRight.prefWidthProperty().bind(usableWidth.multiply(0.10));
+        arrowBoxRight.minWidthProperty().bind(usableWidth.multiply(0.10));
+        arrowBoxRight.maxWidthProperty().bind(usableWidth.multiply(0.10));
 
-        modeBox.prefWidthProperty().bind(usableW.multiply(0.90));
-        modeBox.minWidthProperty().bind(usableW.multiply(0.90));
-        modeBox.maxWidthProperty().bind(usableW.multiply(0.90));
+        modeBox.prefWidthProperty().bind(usableWidth.multiply(0.90));
+        modeBox.minWidthProperty().bind(usableWidth.multiply(0.90));
+        modeBox.maxWidthProperty().bind(usableWidth.multiply(0.90));
 
-        // make window mode text static
         modeLabel.setTextFill(Color.WHITE);
         modeLabel.setAlignment(Pos.CENTER);
         modeLabel.setMaxWidth(Double.MAX_VALUE);
         modeBox.getChildren().add(modeLabel);
         StackPane.setAlignment(modeLabel, Pos.CENTER);
 
-        // adds window mode text and caret to the correct row
-        modeRow.getChildren().setAll(modeBox, caretBoxRight);
+        modeRow.getChildren().setAll(modeBox, arrowBoxRight);
 
-        // add the dimmer and the panel to the pause screen to view
         pauseScreen.getChildren().addAll(dimScreen, menuPanel);
         StackPane.setAlignment(menuPanel, Pos.CENTER);
 
-        // adjusts space between the 3 parts (was having trouble just flexing)
-        Region spacer1 = new Region();
-        Region spacer2 = new Region();
+        Region spacerOne = new Region();
+        Region spacerTwo = new Region();
 
-        spacer1.prefHeightProperty().bind(backButton.heightProperty().multiply(0.35));
-        spacer1.minHeightProperty().bind(backButton.heightProperty().multiply(0.35));
-        spacer1.maxHeightProperty().bind(backButton.heightProperty().multiply(0.35));
+        spacerOne.prefHeightProperty().bind(backButton.heightProperty().multiply(0.35));
+        spacerOne.minHeightProperty().bind(backButton.heightProperty().multiply(0.35));
+        spacerOne.maxHeightProperty().bind(backButton.heightProperty().multiply(0.35));
 
-        spacer2.prefHeightProperty().bind(backButton.heightProperty().multiply(0.35));
-        spacer2.minHeightProperty().bind(backButton.heightProperty().multiply(0.35));
-        spacer2.maxHeightProperty().bind(backButton.heightProperty().multiply(0.35));
+        spacerTwo.prefHeightProperty().bind(backButton.heightProperty().multiply(0.35));
+        spacerTwo.minHeightProperty().bind(backButton.heightProperty().multiply(0.35));
+        spacerTwo.maxHeightProperty().bind(backButton.heightProperty().multiply(0.35));
 
-        menuPanel.getChildren().addAll(volCol, spacer1, modeRow, spacer2, backButton);
+        menuPanel.getChildren().addAll(volumeColumn, spacerOne, modeRow, spacerTwo, backButton);
 
-        // hooks up Music function to the volume slider
-        int startVol = Math.max(0, Math.min(10, Music.getVolume()));
-        volumeSlider.setValue(startVol);
+        int startVolume = Math.max(0, Math.min(10, Music.getVolume()));
+        volumeSlider.setValue(startVolume);
 
-        // snaps the ball on the slider to each tick as it gets moved
-        volumeSlider.valueProperty().addListener((obs, ov, nv) -> {
-            if (volumeSlider.isValueChanging()) {
-                double rounded = Math.rint(nv.doubleValue());
-                if (rounded != nv.doubleValue()) {
-                    volumeSlider.setValue(rounded);
-                    return;
-                }
+        volumeSlider.valueProperty().addListener((obs, oldValue, newValue) -> {
+            // snaps slider to nearest tick
+            double rounded = Math.rint(newValue.doubleValue());
+            if (volumeSlider.isValueChanging() && rounded != newValue.doubleValue()) {
+                volumeSlider.setValue(rounded);
+                return;
             }
             Music.setVolume((int) Math.round(volumeSlider.getValue()));
         });
 
-        // supposed to fix ticks to correct alignment (is not perfect)
         hookTrackAlignment();
 
-        // sets default window to fullscreen
         updateWindowModeUI(stage.isFullScreen());
 
-        // caret actions
-        caretRight.setOnAction(e -> { stage.setFullScreen(false); updateWindowModeUI(false); });
-        caretLeft.setOnAction(e ->  { stage.setFullScreen(true);  updateWindowModeUI(true);  });
+        arrowRight.setOnAction(e -> { stage.setFullScreen(false); updateWindowModeUI(false); });
+        arrowLeft.setOnAction(e ->  { stage.setFullScreen(true);  updateWindowModeUI(true);  });
 
-        // forces same font size across the menu
-        backButton.heightProperty().addListener((o, ov, nv) -> {
-            double h = nv.doubleValue();
+        backButton.heightProperty().addListener((o, oldHeight, newHeight) -> {
+            // keeps font sizes in sync
+            double h = newHeight.doubleValue();
             if (h > 0) {
-                double f = h * 0.25; // same factor as PauseMenu buttons
+                double f = h * 0.25;
                 backButton.setFont(Font.font(f));
                 volumeLabel.setFont(Font.font(f));
                 modeLabel.setFont(Font.font(f));
-                caretLeft.setFont(Font.font(f * 0.8));  // arrows look nicer slightly smaller
-                caretRight.setFont(Font.font(f * 0.8));
+                arrowLeft.setFont(Font.font(f * 0.8));
+                arrowRight.setFont(Font.font(f * 0.8));
             }
         });
         Platform.runLater(() -> {
+            // applies font size after first layout
             double h = backButton.getHeight();
             if (h > 0) {
                 double f = h * 0.25;
                 backButton.setFont(Font.font(f));
                 volumeLabel.setFont(Font.font(f));
                 modeLabel.setFont(Font.font(f));
-                caretLeft.setFont(Font.font(f * 0.8));
-                caretRight.setFont(Font.font(f * 0.8));
+                arrowLeft.setFont(Font.font(f * 0.8));
+                arrowRight.setFont(Font.font(f * 0.8));
             }
         });
 
-        // return to pause menu
         backButton.setOnAction(e -> {
+            // returns to the pause menu
             hide();
             pauseMenu.show();
         });
     }
 
+    // shows the settings overlay
     public void show() {
         pauseScreen.setVisible(true);
         pauseScreen.toFront();
         pauseScreen.requestFocus();
     }
 
+    // hides the settings overlay
     public void hide() {
         pauseScreen.setVisible(false);
     }
 
+    // returns the overlay node for layout
     public StackPane getView() {
         return pauseScreen;
     }
 
+    // updates text and arrows based on window mode
     private void updateWindowModeUI(boolean isFullscreen) {
         modeLabel.setText(isFullscreen ? "FULLSCREEN" : "WINDOWED");
 
-        // show one caret box and reorder row so caret sits on the side you can click to change to
         if (isFullscreen) {
-            // switch to windowed
-            caretBoxLeft.setManaged(false);
-            caretBoxLeft.setVisible(false);
-            caretBoxRight.setManaged(true);
-            caretBoxRight.setVisible(true);
-            modeRow.getChildren().setAll(modeBox, caretBoxRight);
+            arrowBoxLeft.setManaged(false);
+            arrowBoxLeft.setVisible(false);
+            arrowBoxRight.setManaged(true);
+            arrowBoxRight.setVisible(true);
+            modeRow.getChildren().setAll(modeBox, arrowBoxRight);
         } else {
-            // switch to fullscreen
-            caretBoxLeft.setManaged(true);
-            caretBoxLeft.setVisible(true);
-            caretBoxRight.setManaged(false);
-            caretBoxRight.setVisible(false);
-            modeRow.getChildren().setAll(caretBoxLeft, modeBox);
+            arrowBoxLeft.setManaged(true);
+            arrowBoxLeft.setVisible(true);
+            arrowBoxRight.setManaged(false);
+            arrowBoxRight.setVisible(false);
+            modeRow.getChildren().setAll(arrowBoxLeft, modeBox);
         }
     }
 
-    // builds the ticks for the volume slider
-    private void buildTicks(Pane tickPane, int divisions) {
-        tickPane.getChildren().clear();
-        for (int i = 0; i <= divisions; i++) {
+    // builds tick marks for the slider
+    private void buildTicks(Pane targetPane, int divisions) {
+        targetPane.getChildren().clear();
+        for (int index = 0; index <= divisions; index++) {
             Region line = new Region();
             line.setStyle("-fx-background-color: white;");
             line.setMinWidth(TICK_WIDTH);
             line.setPrefWidth(TICK_WIDTH);
             line.setMaxWidth(TICK_WIDTH);
-            tickPane.getChildren().add(line);
+            targetPane.getChildren().add(line);
         }
     }
 
-    // aligns ticks (again, not perfect)
+    // aligns ticks with the slider track
     private void hookTrackAlignment() {
         Runnable tryHook = new Runnable() {
             @Override public void run() {
@@ -324,7 +296,7 @@ public class SettingsMenu {
         Platform.runLater(tryHook);
     }
 
-    // changes track that volume adjusts based on what is playing
+    // watches size changes and realigns the ticks
     private class ChangeListener implements javafx.beans.value.ChangeListener<Object> {
         @Override public void changed(javafx.beans.value.ObservableValue<?> o, Object a, Object b) {
             Node track = volumeSlider.lookup(".track");
@@ -332,30 +304,31 @@ public class SettingsMenu {
         }
     }
 
-    // adds the ticks to the slider
+    // positions ticks to match the slider track
     private void layoutTicksToTrack(Node track) {
         if (tickPane.getChildren().isEmpty()) return;
 
-        Bounds tbScene = track.localToScene(track.getBoundsInLocal());
-        Bounds tbStack = sliderStack.sceneToLocal(tbScene);
+        Bounds trackInScene = track.localToScene(track.getBoundsInLocal());
+        Bounds trackInStack = sliderStack.sceneToLocal(trackInScene);
 
-        double trackX = tbStack.getMinX();
-        double trackW = Math.max(0, tbStack.getWidth());
-        double span = Math.max(0, trackW - TICK_WIDTH);
+        double trackStartX = trackInStack.getMinX();
+        double trackWidth = Math.max(0, trackInStack.getWidth());
+        double slideSpan = Math.max(0, trackWidth - TICK_WIDTH);
 
-        double h = Math.max(0, tickPane.getHeight());
-        double tickH = h * 0.60; // vertical length (centered)
-        double y = (h - tickH) / 2.0;
+        // sets simple sizes for tick layout math
+        double paneHeight = Math.max(0, tickPane.getHeight());
+        double tickHeight = paneHeight * 0.60;
+        double offsetY = (paneHeight - tickHeight) / 2.0;
 
-        int count = TICK_DIVISIONS + 1;
-        for (int i = 0; i < count; i++) {
-            Region line = (Region) tickPane.getChildren().get(i);
-            double x = trackX + (i / (double) TICK_DIVISIONS) * span;
-            line.setLayoutX(x);
-            line.setLayoutY(y);
-            line.setPrefHeight(tickH);
-            line.setMinHeight(tickH);
-            line.setMaxHeight(tickH);
+        int tickCount = TICK_DIVISIONS + 1;
+        for (int index = 0; index < tickCount; index++) {
+            Region line = (Region) tickPane.getChildren().get(index);
+            double posX = trackStartX + (index / (double) TICK_DIVISIONS) * slideSpan;
+            line.setLayoutX(posX);
+            line.setLayoutY(offsetY);
+            line.setPrefHeight(tickHeight);
+            line.setMinHeight(tickHeight);
+            line.setMaxHeight(tickHeight);
         }
     }
 }

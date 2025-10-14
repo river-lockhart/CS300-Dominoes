@@ -12,64 +12,71 @@ import models.TableLayout;
 import java.util.function.Consumer;
 
 public class CPlayer {
+    // makes a simple helper for player actions
     public CPlayer(){}
 
+    // sets up player tile dragging and placement behavior
     public void definePlayerMovement(CDominoes domino,
                                      Pane overlay,
-                                     StackPane hitbox,
-                                     HBox strip,
+                                     StackPane tileBox,
+                                     HBox handRow,
                                      TableLayout tableLayout) {
-        final double[] dragDomino = new double[2];
-        final int[] originalIndex = new int[1];
+        double[] dragOffset = new double[2];
+        int[] startIndex = new int[1];
 
-        // one-time rotate handler
-        if (hitbox.getProperties().putIfAbsent("rot-handler", Boolean.TRUE) == null) {
-            hitbox.addEventFilter(KeyEvent.KEY_RELEASED, e -> {
-                if ((e.getCode() == KeyCode.SPACE || e.getCode() == KeyCode.R)
-                        && hitbox.getParent() == overlay && hitbox.isFocused()) {
+        // listens for rotate key after tile moves to overlay
+        if (tileBox.getProperties().putIfAbsent("rot-handler", Boolean.TRUE) == null) {
+            tileBox.addEventFilter(KeyEvent.KEY_RELEASED, event -> {
+                if ((event.getCode() == KeyCode.SPACE || event.getCode() == KeyCode.R)
+                        && tileBox.getParent() == overlay && tileBox.isFocused()) {
                     CDominoes.rotateDomino(domino);
-                    ((ImageView) hitbox.getChildren().get(0)).setRotate(domino.getRotationDegrees());
-                    e.consume();
+                    ((ImageView) tileBox.getChildren().get(0)).setRotate(domino.getRotationDegrees());
+                    event.consume();
                 }
             });
         }
 
-        hitbox.setOnMousePressed(e -> {
-            originalIndex[0] = strip.getChildren().indexOf(hitbox);
+        // picks up the tile and moves it onto the overlay
+        // saves list index so return slot is remembered
+        // computes drag offset so the tile does not jump
+        tileBox.setOnMousePressed(event -> {
+            startIndex[0] = handRow.getChildren().indexOf(tileBox);
 
-            var sceneBounds = hitbox.localToScene(hitbox.getBoundsInLocal());
-            var table = overlay.sceneToLocal(sceneBounds.getMinX(), sceneBounds.getMinY());
+            var sceneBounds = tileBox.localToScene(tileBox.getBoundsInLocal());
+            var localPoint = overlay.sceneToLocal(sceneBounds.getMinX(), sceneBounds.getMinY());
 
-            strip.getChildren().remove(hitbox);
-            overlay.getChildren().add(hitbox);
-            hitbox.setLayoutX(table.getX());
-            hitbox.setLayoutY(table.getY());
-            hitbox.toFront();
+            handRow.getChildren().remove(tileBox);
+            overlay.getChildren().add(tileBox);
+            tileBox.setLayoutX(localPoint.getX());
+            tileBox.setLayoutY(localPoint.getY());
+            tileBox.toFront();
 
-            hitbox.setFocusTraversable(true);
-            hitbox.requestFocus();
+            tileBox.setFocusTraversable(true);
+            tileBox.requestFocus();
 
-            dragDomino[0] = e.getSceneX() - sceneBounds.getMinX();
-            dragDomino[1] = e.getSceneY() - sceneBounds.getMinY();
+            dragOffset[0] = event.getSceneX() - sceneBounds.getMinX();
+            dragOffset[1] = event.getSceneY() - sceneBounds.getMinY();
         });
 
-        hitbox.setOnMouseDragged(e -> {
-            var q = overlay.sceneToLocal(e.getSceneX(), e.getSceneY());
-            hitbox.setLayoutX(q.getX() - dragDomino[0]);
-            hitbox.setLayoutY(q.getY() - dragDomino[1]);
+        // drags the tile around following the mouse
+        tileBox.setOnMouseDragged(event -> {
+            var dragPoint = overlay.sceneToLocal(event.getSceneX(), event.getSceneY());
+            tileBox.setLayoutX(dragPoint.getX() - dragOffset[0]);
+            tileBox.setLayoutY(dragPoint.getY() - dragOffset[1]);
         });
 
-        hitbox.setOnMouseReleased(e -> {
+        // tries to place tile on board, or returns it to hand
+        // restores default facing when returning to the hand
+        // limits rotation attempts to prevent endless spinning
+        tileBox.setOnMouseReleased(event -> {
             boolean placed = false;
             if (tableLayout != null) {
-                placed = tableLayout.tryPlaceOnGrid(domino, hitbox, strip, "Player");
+                placed = tableLayout.tryPlaceOnGrid(domino, tileBox, handRow, "Player");
             }
 
             if (placed) {
-                // successful commit: if an onCommit callback was attached to this tile,
-                // call it so the model hand can be updated and auto-draw can run.
                 @SuppressWarnings("unchecked")
-                Consumer<CDominoes> onCommit = (Consumer<CDominoes>) hitbox.getProperties().get("onCommit");
+                Consumer<CDominoes> onCommit = (Consumer<CDominoes>) tileBox.getProperties().get("onCommit");
                 if (onCommit != null) {
                     try {
                         onCommit.accept(domino);
@@ -80,22 +87,22 @@ public class CPlayer {
                 return;
             }
 
-            overlay.getChildren().remove(hitbox);
-            int idx = originalIndex[0];
-            if (idx < 0) idx = strip.getChildren().size();
-            if (idx > strip.getChildren().size()) idx = strip.getChildren().size();
-            strip.getChildren().add(idx, hitbox);
+            overlay.getChildren().remove(tileBox);
+            int insertIndex = startIndex[0];
+            if (insertIndex < 0) insertIndex = handRow.getChildren().size();
+            if (insertIndex > handRow.getChildren().size()) insertIndex = handRow.getChildren().size();
+            handRow.getChildren().add(insertIndex, tileBox);
 
-            hitbox.setLayoutX(0);
-            hitbox.setLayoutY(0);
+            tileBox.setLayoutX(0);
+            tileBox.setLayoutY(0);
 
-            hitbox.setFocusTraversable(false);
+            tileBox.setFocusTraversable(false);
 
-            int guard = 0;
-            while (!"VerticalUp".equals(domino.getOrientation()) && guard++ < 3) {
+            int rotateLimit = 0;
+            while (!"VerticalUp".equals(domino.getOrientation()) && rotateLimit++ < 3) {
                 CDominoes.rotateDomino(domino);
             }
-            ((ImageView) hitbox.getChildren().get(0)).setRotate(domino.getRotationDegrees());
+            ((ImageView) tileBox.getChildren().get(0)).setRotate(domino.getRotationDegrees());
         });
     }
 }
