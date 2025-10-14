@@ -1,7 +1,10 @@
+//AUTHORED BY RIVER LOCKHART, KHUSBU BHUSHAL, GABRIEL BOAFO\\
+
+
 # CS300-Dominos
 
 
-# In case of Java issues
+# In case of Java issues                                                              
 
 Download JDK 21. -> Add path to JAVA_HOME in System Variables (may need to create JAVA_HOME). -> Ensure selected IDE is using correct Java version. -> Restart computer.
 

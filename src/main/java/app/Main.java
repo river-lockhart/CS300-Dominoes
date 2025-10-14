@@ -1,3 +1,5 @@
+//AUTHORED BY RIVER LOCKHART, KHUSBU BHUSHAL, GABRIEL BOAFO
+
 package app;
 
 import controllers.Music;
