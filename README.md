@@ -1,5 +1,6 @@
 //AUTHORED BY RIVER LOCKHART, KHUSBU BHUSHAL, GABRIEL BOAFO\\
 
+#PROJECT COMPLETED!
 
 # CS300-Dominos
 
@@ -65,4 +66,6 @@ In terminal, run command:
 
 # Section 3
 
-- Store final results and display to the console in ASCII (src\main\java\util\ConsoleLogger.java)
+- Store final results and display to the console in ASCII (src\main\java\util\ConsoleLogger.java) - DONE
+
+
