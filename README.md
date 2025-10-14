@@ -39,11 +39,11 @@ In terminal, run command:
 
 - Create distribution of 10 random dominoes to each player hand (associate resource image with each domino) in src\main\java\models\CRandom.java -- DONE
 
-- src\main\java\models\Hand.java will contain currentHand information as an ArrayList(what dominoes and how many, as well as adding and removing from hand) -- Just need to include add/subtract from hand
+- src\main\java\models\Hand.java will contain currentHand information as an ArrayList(what dominoes and how many, as well as adding and removing from hand) -- DONE
 
 - Dominoes in each players hand, as defined in src\main\java\models\Hand.java will be displayed in players hand area in src\main\java\views\CTable.java -- DONE
 
-- Pieces not distributed to player hands will be sent to src\main\java\models\AvailablePieces.java (these will be displayed in the popup panel when clicking Remaining Pieces on the table) Needs to allow player to select pieces from the menu when they don't have a piece that will work -- Reference passed, need to apply to ui
+- Pieces not distributed to player hands will be sent to src\main\java\models\AvailablePieces.java (these will be displayed in the popup panel when clicking Remaining Pieces on the table) Needs to allow player to select pieces from the menu when they don't have a piece that will work -- DONE
 
 - First player to move will be determined 50-50 (src\main\java\models\CRandom.java) - DONE
 
@@ -57,7 +57,7 @@ In terminal, run command:
 
 - Dominoes in player hand need to be able to be dragged and dropped onto table, as well as rotated with a key event (src\main\java\models\TableLayout.java) - DONE
 
-- Win state needs to be defined
+- Win state needs to be defined - DONE
 
 
 # Section 3
