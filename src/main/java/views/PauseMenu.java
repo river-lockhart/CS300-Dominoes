@@ -26,20 +26,40 @@ public class PauseMenu {
     ArrayList<Button> buttons = new ArrayList<>();
 
     // lazily-created settings overlay
-    private SettingsMenu settings; 
+    private SettingsMenu settings;
+
+    /** Shared white-framed transparent button style (used by SettingsMenu too). */
+    public static final String FRAME_BUTTON_STYLE =
+            "-fx-background-color: transparent; " +
+            "-fx-text-fill: white; " +
+            "-fx-border-color: white; " +
+            "-fx-border-width: 5px; " +
+            "-fx-border-radius: 10px;";
+
+    /** Apply standard framed style and disable focus-traversal. */
+    public static void applyFramedButtonStyle(Button b) {
+        b.setStyle(FRAME_BUTTON_STYLE);
+        b.setFocusTraversable(false);
+    }
+
+    /** Create a dimmer that auto-binds to the given parent’s size. */
+    public static Rectangle createDimmer(StackPane parent, double alpha) {
+        Rectangle dim = new Rectangle();
+        dim.setFill(Color.rgb(0, 0, 0, Math.max(0.0, Math.min(1.0, alpha))));
+        dim.widthProperty().bind(parent.widthProperty());
+        dim.heightProperty().bind(parent.heightProperty());
+        return dim;
+    }
 
     public PauseMenu(Stage stage) {
-        
+
         // overlay over the game table
         pauseScreen = new StackPane();
         pauseScreen.setVisible(false);
         pauseScreen.setPickOnBounds(true);
 
-        // dimmed background
-        Rectangle dimScreen = new Rectangle();
-        dimScreen.setFill(Color.rgb(0, 0, 0, 0.55)); // black with 55% opacity
-        dimScreen.widthProperty().bind(pauseScreen.widthProperty());
-        dimScreen.heightProperty().bind(pauseScreen.heightProperty());
+        // dimmed background (shared helper)
+        Rectangle dimScreen = createDimmer(pauseScreen, 0.55);
 
         // vbox to hold buttons, centered
         menuPanel = new VBox(25, resumeButton, settingsButton, resetButton, quitButton);
@@ -51,11 +71,11 @@ public class PauseMenu {
                 Color.WHITE, BorderStrokeStyle.SOLID,
                 new CornerRadii(10), new BorderWidths(2))));
         // prevents children from getting incorrect sizing
-        menuPanel.setFillWidth(false); 
+        menuPanel.setFillWidth(false);
 
         // set menu panel to percentage of screen
         menuPanel.prefWidthProperty().bind(pauseScreen.widthProperty().multiply(0.40));
-        menuPanel.prefHeightProperty().bind(pauseScreen.heightProperty().multiply(0.70)); 
+        menuPanel.prefHeightProperty().bind(pauseScreen.heightProperty().multiply(0.70));
         menuPanel.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
         // add dimmer and buttons to the overlay
@@ -70,11 +90,10 @@ public class PauseMenu {
 
         // style and size all buttons at once
         for (Button button : buttons){
-            button.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 5px; -fx-border-radius: 10px;");
-            button.setFocusTraversable(false);
-            
+            applyFramedButtonStyle(button);
+
             // sizes buttons relative to the panel
-            button.prefWidthProperty().bind(menuPanel.widthProperty().multiply(0.50));  
+            button.prefWidthProperty().bind(menuPanel.widthProperty().multiply(0.50));
             button.prefHeightProperty().bind(menuPanel.heightProperty().multiply(0.20));
             button.setMinHeight(32);
 
@@ -90,7 +109,7 @@ public class PauseMenu {
         // button actions
         resumeButton.setOnAction(e -> hide());
 
-        // open settings overlay 
+        // open settings overlay
         settingsButton.setOnAction(e -> {
             if (settings == null) {
                 settings = new SettingsMenu(stage, this);

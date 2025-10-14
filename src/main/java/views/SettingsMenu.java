@@ -40,10 +40,10 @@ public class SettingsMenu {
     private static final double TICK_WIDTH = 3.0;
 
     // boxes for window mode parts
-    private final HBox modeRow = new HBox(12);            
-    private final StackPane caretBoxLeft = new StackPane();  
-    private final StackPane caretBoxRight = new StackPane(); 
-    private final StackPane modeBox = new StackPane();       
+    private final HBox modeRow = new HBox(12);
+    private final StackPane caretBoxLeft = new StackPane();
+    private final StackPane caretBoxRight = new StackPane();
+    private final StackPane modeBox = new StackPane();
 
     public SettingsMenu(Stage stage, PauseMenu pauseMenu) {
         // overlay over the pause menu
@@ -51,11 +51,8 @@ public class SettingsMenu {
         pauseScreen.setVisible(false);
         pauseScreen.setPickOnBounds(true);
 
-        // dimmed background
-        Rectangle dimScreen = new Rectangle();
-        dimScreen.setFill(Color.rgb(0, 0, 0, 0.55));
-        dimScreen.widthProperty().bind(pauseScreen.widthProperty());
-        dimScreen.heightProperty().bind(pauseScreen.heightProperty());
+        // dimmed background (re-use helper)
+        Rectangle dimScreen = PauseMenu.createDimmer(pauseScreen, 0.55);
 
         // panel for the settings pieces
         menuPanel = new VBox();
@@ -73,9 +70,8 @@ public class SettingsMenu {
         menuPanel.prefHeightProperty().bind(pauseScreen.heightProperty().multiply(0.70));
         menuPanel.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
-        // back button 
-        backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: white; -fx-border-color: white; -fx-border-width: 5px; -fx-border-radius: 10px;");
-        backButton.setFocusTraversable(false);
+        // back button (re-use helper style)
+        PauseMenu.applyFramedButtonStyle(backButton);
         // change size based on panel
         backButton.prefWidthProperty().bind(menuPanel.widthProperty().multiply(0.50));
         backButton.prefHeightProperty().bind(menuPanel.heightProperty().multiply(0.18));
@@ -85,7 +81,7 @@ public class SettingsMenu {
         volumeLabel.setTextFill(Color.WHITE);
         volumeLabel.setAlignment(Pos.CENTER);
         volumeLabel.setMaxWidth(Double.MAX_VALUE);
-        // chang size based on back button
+        // change size based on back button
         volumeLabel.prefWidthProperty().bind(backButton.widthProperty());
 
         // match the size of the slider with the size of the back button
@@ -105,7 +101,7 @@ public class SettingsMenu {
         volumeSlider.prefWidthProperty().bind(sliderStack.widthProperty());
         sliderStack.getChildren().add(volumeSlider);
 
-        // overlay the tick on the slider
+        // overlay the ticks on the slider
         tickPane.setMouseTransparent(true);
         tickPane.prefWidthProperty().bind(sliderStack.widthProperty());
         tickPane.minWidthProperty().bind(sliderStack.widthProperty());
@@ -158,14 +154,14 @@ public class SettingsMenu {
                 () -> Math.max(0, modeRow.getWidth() - modeRow.getSpacing()),
                 modeRow.widthProperty()
         );
-        
+
         caretBoxLeft.prefWidthProperty().bind(usableW.multiply(0.10));
         caretBoxLeft.minWidthProperty().bind(usableW.multiply(0.10));
         caretBoxLeft.maxWidthProperty().bind(usableW.multiply(0.10));
         caretBoxRight.prefWidthProperty().bind(usableW.multiply(0.10));
         caretBoxRight.minWidthProperty().bind(usableW.multiply(0.10));
         caretBoxRight.maxWidthProperty().bind(usableW.multiply(0.10));
-        
+
         modeBox.prefWidthProperty().bind(usableW.multiply(0.90));
         modeBox.minWidthProperty().bind(usableW.multiply(0.90));
         modeBox.maxWidthProperty().bind(usableW.multiply(0.90));

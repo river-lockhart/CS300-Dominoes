@@ -1,7 +1,5 @@
 package views;
 
-import controllers.CPlayer;
-import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -10,8 +8,10 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.scene.text.Font;
 import javafx.util.Duration;
+import javafx.geometry.Insets;
 import models.AvailablePieces;
 import models.Hand;
+import controllers.CPlayer;
 
 public class MainMenu {
     private final Stage stage;
@@ -95,10 +95,10 @@ public class MainMenu {
 
         // flex font size based on the height of the buttons
         playButton.heightProperty().addListener((obs, oldVal, newVal) ->
-            playButton.setFont(Font.font(newVal.doubleValue() * 0.4))
+                playButton.setFont(Font.font(newVal.doubleValue() * 0.4))
         );
         exitButton.heightProperty().addListener((obs, oldVal, newVal) ->
-            exitButton.setFont(Font.font(newVal.doubleValue() * 0.4))
+                exitButton.setFont(Font.font(newVal.doubleValue() * 0.4))
         );
 
         return root;
