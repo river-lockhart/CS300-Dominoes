@@ -3,52 +3,67 @@ name: Build Installers
 on:
   push:
     tags:
-      - 'v*'          # tag to trigger a release build, e.g. v1.0.0
-  workflow_dispatch:   # allow manual runs
+      - 'v*'                  
+  workflow_dispatch:          
 
 jobs:
   windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
           cache: gradle
-      - name: Build installers (Windows)
-        run: ./gradlew --no-daemon clean jpackage shadowJar
+
+      - name: Build (Windows)
+        shell: pwsh
+        run: |
+          .\gradlew.bat --no-daemon clean shadowJar jpackage
+          Get-ChildItem -Recurse build\jpackage
+
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-artifacts
           path: |
-            build/jpackage/**/*
-            build/libs/*.jar
+            build\jpackage\**\*.exe
+            build\jpackage\**\*.msi
+            build\libs\*.jar
 
   macos:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
           cache: gradle
-      - name: Build installers (macOS)
-        run: ./gradlew --no-daemon clean jpackage shadowJar
+
+      - name: Build (macOS)
+        run: |
+          ./gradlew --no-daemon clean shadowJar jpackage
+          ls -R build/jpackage
+
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-artifacts
           path: |
-            build/jpackage/**/*
+            build/jpackage/*.dmg
             build/libs/*.jar
 
   release:
     needs: [windows, macos]
-    runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -58,11 +73,13 @@ jobs:
         with:
           name: macos-artifacts
           path: dist/macos
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/windows/build/jpackage/**
-            dist/macos/build/jpackage/**
-            dist/windows/build/libs/*.jar
-            dist/macos/build/libs/*.jar
+            dist/windows/**/*.exe
+            dist/windows/**/*.msi
+            dist/macos/**/*.dmg
+            dist/windows/**/*.jar
+            dist/macos/**/*.jar
