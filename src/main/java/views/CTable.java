@@ -240,7 +240,55 @@ public class CTable {
         turnManager.turnProperty().addListener((o, oldSide, newSide) -> {
             if (gameOver) return;
 
-            // checks winner right after a turn
+            // --- Instant win when boneyard is empty and someone is at 0 ---
+            if (remainingPieces.size() == 0) {
+                if (hand.getAiCount() == 0) {
+                    gameOver = true;
+                    hideDrawButton();
+                    ConsoleLogger.clearCarryover();
+                    ConsoleLogger.logFinalResult("Computer", "Player", hand.getPlayerHand());
+                    winnerOverlay.show("AI WON");
+                    return;
+                }
+                if (hand.getPlayerCount() == 0) {
+                    gameOver = true;
+                    hideDrawButton();
+                    ConsoleLogger.clearCarryover();
+                    ConsoleLogger.logFinalResult("Player", "Computer", hand.getAiHand());
+                    winnerOverlay.show("YOU WON");
+                    return;
+                }
+            }
+            // --- End instant win ---
+
+            // --- Single-tile endgame guard (no lookahead) ---
+            int by = remainingPieces.size();
+            if (by == 1) {
+                if (newSide == TurnManager.Side.PLAYER) {
+                    boolean playerBlocked = !playerHasPlayableStrict();
+                    if (playerBlocked && hand.getAiCount() == 0) {
+                        gameOver = true;
+                        hideDrawButton();
+                        ConsoleLogger.setCarryoverForRunnerUp(remainingPieces.getLeftoverDominoes().get(0));
+                        ConsoleLogger.logFinalResult("Computer", "Player", hand.getPlayerHand());
+                        winnerOverlay.show("AI WON");
+                        return;
+                    }
+                } else if (newSide == TurnManager.Side.AI) {
+                    boolean aiBlocked = !aiHasPlayableStrict();
+                    if (aiBlocked && hand.getPlayerCount() == 0) {
+                        gameOver = true;
+                        hideDrawButton();
+                        ConsoleLogger.setCarryoverForRunnerUp(remainingPieces.getLeftoverDominoes().get(0));
+                        ConsoleLogger.logFinalResult("Player", "Computer", hand.getAiHand());
+                        winnerOverlay.show("YOU WON");
+                        return;
+                    }
+                }
+            }
+            // --- End single-tile guard ---
+
+            // checks winner right after a turn (standard rules + tie-break)
             WinnerSide winnerSide = computeWinnerWithTiebreak(oldSide);
             if (winnerSide != WinnerSide.NONE) {
                 gameOver = true;
@@ -278,6 +326,25 @@ public class CTable {
 
         // builds floating draw button
         buildDrawButton();
+
+        // --- Instant win check on startup (resume/edge cases) ---
+        if (remainingPieces.size() == 0) {
+            if (hand.getAiCount() == 0) {
+                gameOver = true;
+                ConsoleLogger.clearCarryover();
+                ConsoleLogger.logFinalResult("Computer", "Player", hand.getPlayerHand());
+                winnerOverlay.show("AI WON");
+                return root;
+            }
+            if (hand.getPlayerCount() == 0) {
+                gameOver = true;
+                ConsoleLogger.clearCarryover();
+                ConsoleLogger.logFinalResult("Player", "Computer", hand.getAiHand());
+                winnerOverlay.show("YOU WON");
+                return root;
+            }
+        }
+        // --- End instant win on startup ---
 
         // handles edge case wins and first mover
         WinnerSide initialWinner = computeWinnerWithTiebreak(null);
@@ -568,6 +635,23 @@ public class CTable {
 
         boolean anyPlayable = false;
         for (CDominoes tile : hand.getPlayerHand()) {
+            String startFacing = tile.getOrientation();
+            var placementOption = tableLayout.findLegalPlacementAnywhere(tile);
+            int rotateGuard = 0;
+            while (!Objects.equals(tile.getOrientation(), startFacing) && rotateGuard++ < 4) {
+                CDominoes.rotateDomino(tile);
+            }
+            if (placementOption.isPresent()) anyPlayable = true;
+        }
+        return anyPlayable;
+    }
+
+    // checks if any AI tile is playable (mirror helper)
+    private boolean aiHasPlayableStrict() {
+        if (hand.getAiHand().isEmpty()) return false;
+
+        boolean anyPlayable = false;
+        for (CDominoes tile : hand.getAiHand()) {
             String startFacing = tile.getOrientation();
             var placementOption = tableLayout.findLegalPlacementAnywhere(tile);
             int rotateGuard = 0;

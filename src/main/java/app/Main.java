@@ -15,6 +15,7 @@ public class Main extends Application {
     private double lastWindowW = 1280;
     private double lastWindowH = 800;
 
+    
     public void start(Stage stage) {
         stage.setTitle("Dominoes");
 

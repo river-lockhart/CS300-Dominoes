@@ -544,9 +544,15 @@ public class TableLayout {
         }
     }
 
+    // checks single cell is in grid bounds
+    private boolean inBounds(Cell cell) {
+        return cell.row >= 0 && cell.col >= 0 && cell.row < rowCount && cell.col < colCount;
+    }
+
     // returns true if a two-cell slot is in bounds
     private boolean inBoundsPair(boolean vertical, Cell topLeftCell) {
-        return inBounds(topLeftCell) && inBounds(vertical ? new Cell(topLeftCell.row + 1, topLeftCell.col) : new Cell(topLeftCell.row, topLeftCell.col + 1));
+        return inBounds(topLeftCell) && inBounds(vertical ? new Cell(topLeftCell.row + 1, topLeftCell.col) 
+        : new Cell(topLeftCell.row, topLeftCell.col + 1));
     }
 
     // returns true if both cells are free
@@ -815,10 +821,7 @@ public class TableLayout {
         return Math.max(low, Math.min(high, value));
     }
 
-    // checks single cell is in grid bounds
-    private boolean inBounds(Cell cell) {
-        return cell.row >= 0 && cell.col >= 0 && cell.row < rowCount && cell.col < colCount;
-    }
+    
 
     // computes visible table bounds in overlay space
     private Bounds tableAreaOnOverlay() {
@@ -853,7 +856,8 @@ public class TableLayout {
     private static final class Cell {
         final int row, col;
         Cell(int row, int col) { this.row = row; this.col = col; }
-        @Override public boolean equals(Object o) { if (!(o instanceof Cell)) return false; Cell x = (Cell) o; return x.row == row && x.col == col; }
+        @Override public boolean equals(Object o) { if (!(o instanceof Cell)) return false; 
+            Cell x = (Cell) o; return x.row == row && x.col == col; }
         @Override public int hashCode() { return Objects.hash(row, col); }
         @Override public String toString() { return "(" + row + "," + col + ")"; }
     }
