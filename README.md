@@ -2,7 +2,68 @@
 
 # PROJECT COMPLETED!
 
-# CS300-Dominos
+# CS300-Dominos-Final
+
+The project now runs with multithreading!
+    -The UI runs on the JavaFX thread, while player and ai each have their own respective threads.
+    -Mutex locks have been applied to the game state preventing the player and ai from accessing turn manager at the same time to prevent race conditions with turns.
+
+
+Dockerfile with Docker Desktop now allows anyone to build the project without installing Javafx libraries + Gradle locally. 3 JAR files are built for Windows, MAC, and Linux respectively. 
+
+# Important - JDK 21+ must be installed locally and on PATH due to JAR packaging
+
+# BUILD AND RUN INSTRUCTIONS
+
+Use Docker to build all three platform-specific JAR files.
+
+\`\`\`bash
+docker build -t cs300-dominos-builder .
+\`\`\`
+
+Then export the JARs:
+
+\`\`\`bash
+docker run --rm -v "${PWD}/dist:/export" cs300-dominos-builder
+\`\`\`
+
+After running, your /dist folder will contain:
+- CS300-Dominos-Linux.jar
+- CS300-Dominos-Windows.jar
+- CS300-Dominos-Mac.jar
+
+
+
+# Running the Game (Choose Your OS)
+
+## Linux
+\`\`\`bash
+java -jar CS300-Dominos-Linux.jar
+\`\`\`
+
+
+## Windows
+(Use Powershell or CMD)
+
+\`\`\`powershell
+java -jar CS300-Dominos-Windows.jar
+\`\`\`
+
+
+## macOS
+\`\`\`bash
+java -jar CS300-Dominos-Mac.jar
+\`\`\`
+
+
+
+
+
+
+
+
+
+# CS300-Dominos-Midterm
 
 
 # In case of Java issues                                                              
