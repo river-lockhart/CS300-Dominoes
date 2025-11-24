@@ -16,26 +16,49 @@ public final class SceneTransition {
     private SceneTransition() {}
 
     public static void fadeIntoScene(Stage stage, Parent nextRoot, Duration duration) {
-        Scene scene = stage.getScene();
-        Parent currentRoot = scene.getRoot();
+        Scene currentScene = stage.getScene();
 
-        // captures a frame of the gameplay so crossfade doesn't seem to jumpy 
+        // if there is no scene yet, just set one and bail
+        if (currentScene == null) {
+            stage.setScene(new Scene(nextRoot));
+            return;
+        }
+
+        // prevents attempting to animate between two different scenes
+        Scene targetScene = nextRoot.getScene();
+        if (targetScene != null && targetScene != currentScene) {
+            // degrade gracefully: just swap the stage's scene rather than animating
+            stage.setScene(targetScene);
+            return;
+        }
+
+        Parent currentRoot = currentScene.getRoot();
+
+        // capture a snapshot of the current root so the crossfade doesn't jump
         WritableImage shot = currentRoot.snapshot(new SnapshotParameters(), null);
         ImageView overlay = new ImageView(shot);
         overlay.setPreserveRatio(false);
-        overlay.fitWidthProperty().bind(scene.widthProperty());
-        overlay.fitHeightProperty().bind(scene.heightProperty());
+        overlay.fitWidthProperty().bind(currentScene.widthProperty());
+        overlay.fitHeightProperty().bind(currentScene.heightProperty());
         overlay.setOpacity(1.0);
 
         // show nextRoot underneath the frozen overlay
         StackPane container = new StackPane(nextRoot, overlay);
-        scene.setRoot(container);
+        currentScene.setRoot(container);
 
         Timeline tl = new Timeline(
             new KeyFrame(Duration.ZERO, new KeyValue(overlay.opacityProperty(), 1.0)),
             new KeyFrame(duration,       new KeyValue(overlay.opacityProperty(), 0.0))
         );
-        tl.setOnFinished(e -> scene.setRoot(nextRoot));
+
+        tl.setOnFinished(e -> {
+            // adopts nextRoot into the current scene
+            Scene scene = stage.getScene();
+            if (scene != null && (nextRoot.getScene() == null || nextRoot.getScene() == scene)) {
+                scene.setRoot(nextRoot);
+            }
+        });
+
         tl.play();
     }
 }

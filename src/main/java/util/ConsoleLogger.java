@@ -10,9 +10,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/*
-    note: comments are only above functions, lower-case, ≤10 words
-*/
+
 public final class ConsoleLogger {
 
     private static final DateTimeFormatter clockFmt = DateTimeFormatter.ofPattern("HH:mm:ss");
@@ -20,16 +18,19 @@ public final class ConsoleLogger {
     private static final List<String> moveLines = new ArrayList<>();
     private static final List<String> chainOrder = new ArrayList<>();
 
-    // carryover runner-up tile (edge case: both hands 0, boneyard 1)
     private static CDominoes carryoverRunnerUp = null;
+
+    private static final Object logLock = new Object();
 
     private ConsoleLogger() {}
 
     // resets all logs for a fresh game
     public static void startGame() {
-        moveLines.clear();
-        chainOrder.clear();
-        carryoverRunnerUp = null;
+        synchronized (logLock) {
+            moveLines.clear();
+            chainOrder.clear();
+            carryoverRunnerUp = null;
+        }
         println("");
         println("=== domino game started @ " + now() + " ===");
     }
@@ -39,7 +40,9 @@ public final class ConsoleLogger {
         String who = sideLabel(side);
         String piece = tileAscii(tile);
         String line = stamp("DRAW  | " + padRight(who, 7) + " drew " + piece);
-        moveLines.add(line);
+        synchronized (logLock) {
+            moveLines.add(line);
+        }
         println(line);
     }
 
@@ -47,7 +50,9 @@ public final class ConsoleLogger {
     public static void logPass(TurnManager.Side side) {
         String who = sideLabel(side);
         String line = stamp("PASS  | " + padRight(who, 7) + " passed (no move)");
-        moveLines.add(line);
+        synchronized (logLock) {
+            moveLines.add(line);
+        }
         println(line);
     }
 
@@ -56,11 +61,11 @@ public final class ConsoleLogger {
         String who = sideLabel(side);
         String piece = tileAscii(tile);
         String line = stamp("PLACE | " + padRight(who, 7) + " placed " + piece);
-        moveLines.add(line);
+        synchronized (logLock) {
+            moveLines.add(line);
+            chainOrder.add(piece);
+        }
         println(line);
-
-        // record order, but do NOT print chain here
-        chainOrder.add(piece);
     }
 
     // prints a normal placement with coordinates, adds to chain silently
@@ -70,11 +75,11 @@ public final class ConsoleLogger {
         String face = plan.vertical ? "vertical" : "horizontal";
         String place = "(row " + plan.row + ", col " + plan.col + ", " + face + ")";
         String line = stamp("PLACE | " + padRight(who, 7) + " placed " + piece + " " + place);
-        moveLines.add(line);
+        synchronized (logLock) {
+            moveLines.add(line);
+            chainOrder.add(piece);
+        }
         println(line);
-
-        // record order, but do NOT print chain here
-        chainOrder.add(piece);
     }
 
     // prints "placed [a] against [b]" and adds [a] to chain silently
@@ -83,11 +88,11 @@ public final class ConsoleLogger {
         String a = tileAscii(placed);
         String b = tileAscii(matched);
         String line = stamp("MATCH | " + padRight(who, 7) + " placed " + a + " against " + b);
-        moveLines.add(line);
+        synchronized (logLock) {
+            moveLines.add(line);
+            chainOrder.add(a);
+        }
         println(line);
-
-        // record order, but do NOT print chain here
-        chainOrder.add(a);
     }
 
     // prints a short winner summary
@@ -97,12 +102,16 @@ public final class ConsoleLogger {
 
     // set carryover tile for runner-up (edge case)
     public static void setCarryoverForRunnerUp(CDominoes tile) {
-        carryoverRunnerUp = tile;
+        synchronized (logLock) {
+            carryoverRunnerUp = tile;
+        }
     }
 
     // clear carryover
     public static void clearCarryover() {
-        carryoverRunnerUp = null;
+        synchronized (logLock) {
+            carryoverRunnerUp = null;
+        }
     }
 
     // prints the final required summary (only place the chain here)
@@ -111,10 +120,13 @@ public final class ConsoleLogger {
             String runnerUpLabel,
             List<CDominoes> runnerUpTiles
     ) {
-        // stitch carryover into runner-up list if present
         List<CDominoes> shown = new ArrayList<>();
-        if (runnerUpTiles != null) shown.addAll(runnerUpTiles);
-        if (carryoverRunnerUp != null) shown.add(carryoverRunnerUp);
+        CDominoes carryCopy;
+        synchronized (logLock) {
+            if (runnerUpTiles != null) shown.addAll(runnerUpTiles);
+            if (carryoverRunnerUp != null) shown.add(carryoverRunnerUp);
+            carryCopy = carryoverRunnerUp;
+        }
 
         String countText = String.valueOf(shown.size());
         String tilesText = tilesAscii(shown);
@@ -131,12 +143,16 @@ public final class ConsoleLogger {
 
     // returns the whole move log
     public static List<String> getMoveLines() {
-        return Collections.unmodifiableList(moveLines);
+        synchronized (logLock) {
+            return Collections.unmodifiableList(new ArrayList<>(moveLines));
+        }
     }
 
     // returns the chain in order
     public static List<String> getChainOrder() {
-        return Collections.unmodifiableList(chainOrder);
+        synchronized (logLock) {
+            return Collections.unmodifiableList(new ArrayList<>(chainOrder));
+        }
     }
 
     // builds ascii for one tile
@@ -173,13 +189,15 @@ public final class ConsoleLogger {
 
     // renders the chain with arrows
     private static String renderChain() {
-        if (chainOrder.isEmpty()) return "—";
-        StringBuilder out = new StringBuilder();
-        for (int i = 0; i < chainOrder.size(); i++) {
-            if (i > 0) out.append(" -> ");
-            out.append(chainOrder.get(i));
+        synchronized (logLock) {
+            if (chainOrder.isEmpty()) return "—";
+            StringBuilder out = new StringBuilder();
+            for (int i = 0; i < chainOrder.size(); i++) {
+                if (i > 0) out.append(" -> ");
+                out.append(chainOrder.get(i));
+            }
+            return out.toString();
         }
-        return out.toString();
     }
 
     // prints a time stamped line

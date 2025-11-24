@@ -38,7 +38,10 @@ import models.TableLayout;
 import controllers.CPlayer;
 import controllers.AIPlayer;
 import controllers.TurnManager;
+import controllers.PlayerThread;
+import controllers.AIThread;
 import util.ConsoleLogger;
+import util.GameState;
 
 public class CTable {
     private final Stage stage;
@@ -48,6 +51,8 @@ public class CTable {
     private final TurnManager turnManager;
 
     private AIPlayer aiPlayer;
+    private PlayerThread playerThread;
+    private AIThread aiThread;
 
     private static final double NAVBAR_HEIGHT = 56;
     private static final double HAND_BAR_MIN = 64;
@@ -197,11 +202,24 @@ public class CTable {
         tableLayout = new TableLayout(overlay, tableCanvas, turnManager, playerStrip, computerStrip);
 
         // seeds center join point if empty
-        tablePane.layoutBoundsProperty().addListener((o, oldBounds, newBounds) -> Platform.runLater(tableLayout::forceReseedCenterIfEmpty));
+        tablePane.layoutBoundsProperty().addListener((o, oldBounds, newBounds) ->
+                Platform.runLater(tableLayout::forceReseedCenterIfEmpty));
         Platform.runLater(tableLayout::forceReseedCenterIfEmpty);
 
         // builds ai controller
         aiPlayer = new AIPlayer(tableLayout, turnManager, computerStrip, hand, remainingPieces);
+
+        // shared game state + dedicated player & ai threads
+        GameState gameState = new GameState();
+        turnManager.setGameState(gameState);
+        player.setGameState(gameState);
+
+        playerThread = new PlayerThread(gameState);
+        player.setPlayerThread(playerThread);
+        playerThread.start();
+
+        aiThread = new AIThread(turnManager, aiPlayer);
+        aiThread.start();
 
         // renders dominoes for both hands
         displayDominoes(hand, computerStrip, "AI", aiHandBar);
@@ -246,13 +264,23 @@ public class CTable {
                 gameOver = true;
                 hideDrawButton();
 
+                // stop background threads
+                if (playerThread != null) {
+                    playerThread.requestStop();
+                }
+                if (aiThread != null) {
+                    aiThread.requestStop();
+                }
+
                 // include carryover boneyard tile if needed
                 stashCarryoverIfNeededForRunnerUp();
 
                 // logs the final required summary
                 String winnerName = winnerSide == WinnerSide.PLAYER ? "Player" : "Computer";
                 String runnerName = winnerSide == WinnerSide.PLAYER ? "Computer" : "Player";
-                List<CDominoes> runnerTiles = winnerSide == WinnerSide.PLAYER ? hand.getAiHand() : hand.getPlayerHand();
+                List<CDominoes> runnerTiles = winnerSide == WinnerSide.PLAYER
+                        ? hand.getAiHand()
+                        : hand.getPlayerHand();
                 ConsoleLogger.logFinalResult(winnerName, runnerName, runnerTiles);
 
                 winnerOverlay.show(winnerSide == WinnerSide.PLAYER ? "YOU WON" : "AI WON");
@@ -266,7 +294,7 @@ public class CTable {
             // starts ai or shows draw option
             if (newSide == TurnManager.Side.AI && aiPlayer != null) {
                 hideDrawButton();
-                aiPlayer.takeTurnWithDelay();
+                // ai thread will detect ai's turn and trigger the move
             } else if (newSide == TurnManager.Side.PLAYER) {
                 updateDrawButtonSoon();
             }
@@ -284,18 +312,28 @@ public class CTable {
         if (initialWinner != WinnerSide.NONE) {
             gameOver = true;
 
+            // stop background threads
+            if (playerThread != null) {
+                playerThread.requestStop();
+            }
+            if (aiThread != null) {
+                aiThread.requestStop();
+            }
+
             // include carryover boneyard tile if needed
             stashCarryoverIfNeededForRunnerUp();
 
             // logs the final required summary
             String winnerName = initialWinner == WinnerSide.PLAYER ? "Player" : "Computer";
             String runnerName = initialWinner == WinnerSide.PLAYER ? "Computer" : "Player";
-            List<CDominoes> runnerTiles = initialWinner == WinnerSide.PLAYER ? hand.getAiHand() : hand.getPlayerHand();
+            List<CDominoes> runnerTiles = initialWinner == WinnerSide.PLAYER
+                    ? hand.getAiHand()
+                    : hand.getPlayerHand();
             ConsoleLogger.logFinalResult(winnerName, runnerName, runnerTiles);
 
             winnerOverlay.show(initialWinner == WinnerSide.PLAYER ? "YOU WON" : "AI WON");
         } else if (turnManager.getTurn() == TurnManager.Side.AI) {
-            aiPlayer.takeTurnWithDelay();
+            // ai thread will notice it's ai's turn and start the move
         } else {
             updateDrawButtonSoon();
         }

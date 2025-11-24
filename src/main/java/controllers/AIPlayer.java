@@ -35,6 +35,11 @@ public class AIPlayer extends CPlayer {
         this.boneyard = boneyard;
     }
 
+    // immediately performs ai turn
+    public void performInstantTurn() {
+        doAIMove();
+    }
+
     // schedules ai move after a short delay
     public void takeTurnWithDelay() {
         if (waitTimer != null) {

@@ -8,12 +8,26 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import models.CDominoes;
 import models.TableLayout;
+import util.GameState;
 
 import java.util.function.Consumer;
 
 public class CPlayer {
     // makes a simple helper for player actions
-    public CPlayer(){}
+    public CPlayer() {}
+
+    private GameState gameState;
+    private PlayerThread playerThread;
+
+    // allows external code to share the game state lock
+    public void setGameState(GameState gameState) {
+        this.gameState = gameState;
+    }
+
+    // allows external code (CTable) to give this player its dedicated thread
+    public void setPlayerThread(PlayerThread playerThread) {
+        this.playerThread = playerThread;
+    }
 
     // sets up player tile dragging and placement behavior
     public void definePlayerMovement(CDominoes domino,
@@ -78,10 +92,21 @@ public class CPlayer {
                 @SuppressWarnings("unchecked")
                 Consumer<CDominoes> onCommit = (Consumer<CDominoes>) tileBox.getProperties().get("onCommit");
                 if (onCommit != null) {
-                    try {
-                        onCommit.accept(domino);
-                    } catch (Exception ex) {
-                        System.out.println("[place] onCommit threw: " + ex);
+                    if (gameState != null) {
+                        // lock game state while we mutate shared game data
+                        gameState.withLockedState(() -> {
+                            try {
+                                onCommit.accept(domino);
+                            } catch (Exception ex) {
+                                System.out.println("[place] onCommit threw: " + ex);
+                            }
+                        });
+                    } else {
+                        try {
+                            onCommit.accept(domino);
+                        } catch (Exception ex) {
+                            System.out.println("[place] onCommit threw: " + ex);
+                        }
                     }
                 }
                 return;

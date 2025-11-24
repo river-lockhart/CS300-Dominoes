@@ -1,10 +1,9 @@
 package models;
 
-import java.io.File;
 import java.net.URL;
 import java.util.ArrayList;
 
-public class CDominoes{
+public class CDominoes {
 
     // properties of dominoes
     private String orientation;
@@ -16,7 +15,9 @@ public class CDominoes{
     private int rotationDegrees = 0;
 
     // domino constructor
-    public CDominoes(String orientation, String image, Integer leftValue, Integer rightValue, Integer topValue, Integer bottomValue){
+    public CDominoes(String orientation, String image,
+                     Integer leftValue, Integer rightValue,
+                     Integer topValue, Integer bottomValue) {
         this.orientation = orientation;
         this.image = image;
         this.leftValue = leftValue;
@@ -25,70 +26,72 @@ public class CDominoes{
         this.bottomValue = bottomValue;
     }
 
-    // creates an arraylist with all 28 dominoes
+    // creates an arraylist with all 28 dominoes (double-six set)
     public static ArrayList<CDominoes> createGameDominoes() {
         ArrayList<CDominoes> dominoes = new ArrayList<>();
-        try {
-            // retrieve resource folder
-            URL resourceFolder = CDominoes.class.getResource("/assets/dominoImages/");
-            if (resourceFolder == null) return dominoes;
-            // gets each domino image from the resource folder
-            File folder = new File(resourceFolder.toURI());
-            File[] files = folder.listFiles((d, name) -> name.toLowerCase().endsWith(".png"));
-            if (files != null) {
-                // iterates through each domino image and splits to find domino values
-                for (File f : files) {
-                    // retrieves image path
-                    String imagePath = "/assets/dominoImages/" + f.getName();
-                    // removes extraneous text
-                    String name = f.getName().replace("Domino-", "").replace(".PNG","").replace(".png","");
-                    // splits at the "." between values
-                    String[] parts = name.split("\\.");
-                    // stores domino number values
-                    int top = Integer.parseInt(parts[0]);
-                    int bottom = Integer.parseInt(parts[1]);
 
-                    // creates domino object with info from image name and default Vertical orientation
-                    dominoes.add(new CDominoes(
-                        "VerticalUp", 
-                        imagePath, 
-                        null, 
-                        null, 
-                        top, 
-                        bottom));
+        // standard double-six set: 0-0, 0-1, ... , 6-6 (i <= j)
+        for (int top = 0; top <= 6; top++) {
+            for (int bottom = top; bottom <= 6; bottom++) {
+
+                // adjust this pattern to match your actual filenames
+                String lower = String.format("/assets/dominoImages/Domino-%d.%d.png", top, bottom);
+                String upper = String.format("/assets/dominoImages/Domino-%d.%d.PNG", top, bottom);
+
+                URL img = CDominoes.class.getResource(lower);
+                String imagePath;
+
+                if (img != null) {
+                    imagePath = lower;
+                } else {
+                    img = CDominoes.class.getResource(upper);
+                    if (img != null) {
+                        imagePath = upper;
+                    } else {
+                        System.err.println("WARNING: missing domino image for " + top + "." + bottom);
+                        continue; // skip if we really don't have this file
+                    }
                 }
+
+                dominoes.add(new CDominoes(
+                        "VerticalUp",
+                        imagePath,
+                        null,
+                        null,
+                        top,
+                        bottom
+                ));
             }
-        } catch (Exception e) { e.printStackTrace(); }
+        }
+
+        System.out.println("DEBUG: created " + dominoes.size() + " dominoes.");
         return dominoes;
     }
 
     // function to rotate domino image and value between vertical/horizontal/upside down and vice versa
-    public static void rotateDomino(CDominoes domino){
-        // swaps orientation
-        if("VerticalUp".equals(domino.orientation)){
+    public static void rotateDomino(CDominoes domino) {
+        if ("VerticalUp".equals(domino.orientation)) {
             domino.orientation = "HorizontalLeft";
-            // swaps value orientation
             domino.leftValue = domino.topValue;
             domino.rightValue = domino.bottomValue;
             domino.topValue = null;
             domino.bottomValue = null;
-            // value to rotate image holder in ui
             domino.rotationDegrees = -90;
-        }else if("HorizontalLeft".equals(domino.orientation)){
+        } else if ("HorizontalLeft".equals(domino.orientation)) {
             domino.orientation = "VerticalDown";
             domino.topValue = domino.rightValue;
-            domino.bottomValue = domino.leftValue;  
+            domino.bottomValue = domino.leftValue;
             domino.leftValue = null;
             domino.rightValue = null;
             domino.rotationDegrees = -180;
-        }else if("VerticalDown".equals(domino.orientation)){
+        } else if ("VerticalDown".equals(domino.orientation)) {
             domino.orientation = "HorizontalRight";
             domino.leftValue = domino.topValue;
             domino.rightValue = domino.bottomValue;
             domino.topValue = null;
             domino.bottomValue = null;
             domino.rotationDegrees = -270;
-        }else{
+        } else {
             domino.orientation = "VerticalUp";
             domino.topValue = domino.rightValue;
             domino.bottomValue = domino.leftValue;
@@ -97,13 +100,13 @@ public class CDominoes{
             domino.rotationDegrees = 0;
         }
     }
-    
+
     // getters
-    public String  getOrientation()     { return orientation; }
-    public String  getImage()           { return image; }
-    public Integer getLeftValue()       { return leftValue; }
-    public Integer getRightValue()      { return rightValue; }
-    public Integer getTopValue()        { return topValue; }
-    public Integer getBottomValue()     { return bottomValue; }
-    public int getRotationDegrees()     { return rotationDegrees; }
+    public String  getOrientation()    { return orientation; }
+    public String  getImage()          { return image; }
+    public Integer getLeftValue()      { return leftValue; }
+    public Integer getRightValue()     { return rightValue; }
+    public Integer getTopValue()       { return topValue; }
+    public Integer getBottomValue()    { return bottomValue; }
+    public int     getRotationDegrees(){ return rotationDegrees; }
 }

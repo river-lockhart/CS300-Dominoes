@@ -37,14 +37,14 @@ public class AvailablePieces {
     }
 
     // returns number of leftover tiles
-    public int size() { return leftoverDominoes.size(); }
+    public synchronized int size() { return leftoverDominoes.size(); }
 
     // returns if no leftover tiles remain
-    public boolean isEmpty() { return leftoverDominoes.isEmpty(); }
+    public synchronized boolean isEmpty() { return leftoverDominoes.isEmpty(); }
 
     // removes and returns random tile or null
     // logs size before and after removal
-    public CDominoes drawRandom() {
+    public synchronized CDominoes drawRandom() {
         if (leftoverDominoes.isEmpty()) {
             System.out.println("[boneyard] drawRandom: EMPTY");
             return null;
@@ -57,7 +57,7 @@ public class AvailablePieces {
     }
 
     // adds tile back into leftovers
-    public void putBack(CDominoes tile) {
+    public synchronized void putBack(CDominoes tile) {
         if (tile != null) {
             leftoverDominoes.add(tile);
         }

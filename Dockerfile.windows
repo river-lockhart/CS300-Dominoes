@@ -1,0 +1,22 @@
+# Dockerfile.windows (only usable when Docker is in Windows Containers mode)
+FROM mcr.microsoft.com/openjdk/jdk:21-windowsservercore-ltsc2022
+
+WORKDIR C:\\app
+
+COPY gradlew.bat gradlew.bat
+COPY gradle gradle
+COPY build.gradle.kts settings.gradle.kts ./
+COPY src src
+
+# run gradle wrapper (Windows)
+RUN gradlew.bat --no-daemon help
+
+# build Windows jar with JavaFX (same properties)
+# build Windows jar
+RUN cmd /S /C "gradlew.bat --no-daemon -PjavafxPlatform=win -PplatformSuffix=Windows shadowJar"
+
+
+
+# now jpackage to .msi
+RUN cmd /S /C "jpackage --name CS300-Dominos --input build\\libs --main-jar CS300-Dominos-Windows.jar --type msi --dest build\\installer --app-version 1.0.0 --vendor \"CS300 Dominoes Team\""
+
