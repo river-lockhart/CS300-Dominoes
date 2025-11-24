@@ -17,15 +17,15 @@ Dockerfile with Docker Desktop now allows anyone to build the project without in
 
 Use Docker to build all three platform-specific JAR files.
 
-\`\`\`bash
+```bash
 docker build -t cs300-dominos-builder .
-\`\`\`
+```
 
 Then export the JARs:
 
-\`\`\`bash
+```bash
 docker run --rm -v "${PWD}/dist:/export" cs300-dominos-builder
-\`\`\`
+```
 
 After running, your /dist folder will contain:
 - CS300-Dominos-Linux.jar
@@ -37,23 +37,21 @@ After running, your /dist folder will contain:
 # Running the Game (Choose Your OS)
 
 ## Linux
-\`\`\`bash
+```bash
 java -jar CS300-Dominos-Linux.jar
-\`\`\`
-
+```
 
 ## Windows
 (Use Powershell or CMD)
 
-\`\`\`powershell
+```powershell
 java -jar CS300-Dominos-Windows.jar
-\`\`\`
-
+```
 
 ## macOS
-\`\`\`bash
+```bash
 java -jar CS300-Dominos-Mac.jar
-\`\`\`
+```
 
 
 
