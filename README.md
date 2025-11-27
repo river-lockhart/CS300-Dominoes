@@ -38,19 +38,19 @@ After running, your /dist folder will contain:
 
 ## Linux
 ```bash
-java -jar CS300-Dominos-Linux.jar
+java -jar dist/CS300-Dominos-Linux.jar
 ```
 
 ## Windows
 (Use Powershell or CMD)
 
 ```powershell
-java -jar CS300-Dominos-Windows.jar
+java -jar dist/CS300-Dominos-Windows.jar
 ```
 
 ## macOS
 ```bash
-java -jar CS300-Dominos-Mac.jar
+java -jar dist/CS300-Dominos-Mac.jar
 ```
 
 
